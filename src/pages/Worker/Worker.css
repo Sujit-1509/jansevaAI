@@ -1,0 +1,108 @@
+.worker-page {
+    padding-top: calc(var(--top-offset) + var(--space-xl));
+    padding-bottom: var(--space-3xl);
+    min-height: 100vh;
+}
+.worker-header {
+    margin-bottom: var(--space-xl);
+}
+.worker-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+.worker-card {
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+.wc-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.wc-top>div {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+.wc-id {
+    font-size: var(--font-size-xs);
+    color: var(--primary);
+    background: var(--primary-bg);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+}
+.wc-desc {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.wc-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-lg);
+}
+.wc-loc {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    white-space: nowrap;
+    font-weight: 500;
+}
+.wc-actions {
+    display: flex;
+    gap: var(--space-sm);
+    padding-top: var(--space-sm);
+    border-top: 1px solid var(--border-light);
+}
+.wc-update {
+    margin-top: var(--space-lg);
+    padding: var(--space-lg) !important;
+    border: 1px solid var(--border);
+}
+.status-options {
+    display: flex;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+}
+.status-radio {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: all var(--transition-fast);
+    background: var(--bg-card);
+}
+.status-radio input {
+    display: none;
+}
+.status-radio:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.status-radio.active {
+    border-color: var(--primary);
+    background: var(--primary-bg);
+    color: var(--primary);
+}
+.worker-detail {
+    max-width: 660px;
+}
