@@ -39,7 +39,7 @@ function App() {
         <BrowserRouter>
             <>
                 {userRole === "citizen" ? (
-                    <CitizenLayout user={user}>
+                    <CitizenLayout user={user} onLogout={handleLogout}>
                         <Routes>
                             <Route path="/" element={<Home />} />
                             <Route path="/submit" element={<SubmitComplaint />} />
@@ -66,7 +66,7 @@ function App() {
                         </footer>
                     </CitizenLayout>
                 ) : (
-                    <AppLayout role={userRole} user={user}>
+                    <AppLayout role={userRole} user={user} onLogout={handleLogout}>
                         <Routes>
                             <Route path="/dashboard" element={<Dashboard />} />
                             <Route path="/complaints" element={<AdminComplaints />} />

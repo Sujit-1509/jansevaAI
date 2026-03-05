@@ -67,7 +67,7 @@ const Sidebar = ({ role = 'citizen', user }) => {
             <div className="sidebar-user-role">{role}</div>
           </div>
         </div>
-        <button className="sidebar-logout">
+        <button className="sidebar-logout" onClick={onLogout}>
           <LogOut size={14} />
           Logout
         </button>
