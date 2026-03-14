@@ -40,6 +40,29 @@ Citizens authenticate via OTP (SMS) and can track their complaints in real-time.
 
 ---
 
+## Screenshots
+
+### 📱 Citizen Experience (Reporting an Issue)
+<p float="left">
+  <img src="docs/images/01_citizen_home.png" width="48%" alt="Citizen Home" />
+  <img src="docs/images/03_filled_form.png" width="48%" alt="Filling Complaint Form" />
+</p>
+<p float="left">
+  <img src="docs/images/04_ai_analysis.png" width="48%" alt="AI Analysis Results" />
+  <img src="docs/images/05_citizen_history.png" width="48%" alt="Citizen Complaint History" />
+</p>
+
+### 💻 Administrator Command Center
+<p float="left">
+  <img src="docs/images/06_admin_dashboard.png" width="48%" alt="Real-time Admin Dashboard" />
+  <img src="docs/images/07_admin_analytics.png" width="48%" alt="Historical Analytics" /> 
+</p>
+<p float="left">
+  <img src="docs/images/08_admin_complaints.png" width="97%" alt="Detailed Complaints Table" />
+</p>
+
+---
+
 ## Key Features
 
 | Feature | Description |
