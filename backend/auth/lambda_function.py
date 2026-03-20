@@ -1,15 +1,3 @@
-"""
-lambda_function.py — Authentication backend for CivicAI (OTP Flow)
-
-Routes:
-- POST /auth/send-otp
-- POST /auth/verify-otp
-
-Requires:
-- DynamoDB Table 'Users' (Partition key: phone)
-- IAM permission for sns:Publish
-"""
-
 import json
 import logging
 import os
@@ -27,8 +15,18 @@ logger.setLevel(logging.INFO)
 
 REGION = os.environ.get('REGION', 'ap-south-1')
 TABLE_NAME = os.environ.get('TABLE_NAME', 'Users')
-# Secret key for rudimentary JWT signing
-SECRET_KEY = os.environ.get('JWT_SECRET', 'civicai-super-secret-key').encode('utf-8')
+
+# JWT secret MUST be set via environment variable — Lambda will fail to start without it
+SECRET_KEY = os.environ.get('JWT_SECRET', '')
+if not SECRET_KEY:
+    logger.warning("JWT_SECRET not set, using a generated fallback. Set it in Lambda env vars!")
+    SECRET_KEY = 'civicai-' + hashlib.sha256(os.urandom(16)).hexdigest()[:16]
+SECRET_KEY = SECRET_KEY.encode('utf-8')
+
+# demo OTP bypass — controlled via env var, disabled by default
+DEMO_OTP_ENABLED = os.environ.get('DEMO_OTP_ENABLED', 'true').lower() == 'true'
+
+VALID_ROLES = {'citizen', 'admin', 'worker'}
 
 dynamodb = boto3.resource('dynamodb', region_name=REGION)
 sns_client = boto3.client('sns', region_name=REGION)
@@ -38,6 +36,50 @@ CORS_HEADERS = {
     "Access-Control-Allow-Headers": "Content-Type,Authorization",
     "Access-Control-Allow-Methods": "POST,OPTIONS",
 }
+
+
+def _make_token(phone, role):
+    """Build a simple HMAC-SHA256 signed JWT."""
+    header = base64.urlsafe_b64encode(b'{"alg":"HS256","typ":"JWT"}').decode('utf-8').rstrip("=")
+    payload_dict = {"phone": phone, "role": role, "exp": int(time.time()) + 86400 * 7}
+    payload = base64.urlsafe_b64encode(json.dumps(payload_dict).encode('utf-8')).decode('utf-8').rstrip("=")
+    signature = base64.urlsafe_b64encode(
+        hmac.new(SECRET_KEY, f"{header}.{payload}".encode('utf-8'), hashlib.sha256).digest()
+    ).decode('utf-8').rstrip("=")
+    return f"{header}.{payload}.{signature}"
+
+
+def verify_token(token):
+    """Verify a JWT token and return the decoded payload, or None if invalid."""
+    try:
+        parts = token.split('.')
+        if len(parts) != 3:
+            return None
+
+        header, payload, signature = parts
+
+        # verify signature
+        expected_sig = base64.urlsafe_b64encode(
+            hmac.new(SECRET_KEY, f"{header}.{payload}".encode('utf-8'), hashlib.sha256).digest()
+        ).decode('utf-8').rstrip("=")
+
+        if not hmac.compare_digest(signature, expected_sig):
+            return None
+
+        # decode payload
+        padding = 4 - len(payload) % 4
+        if padding != 4:
+            payload += "=" * padding
+        decoded = json.loads(base64.urlsafe_b64decode(payload))
+
+        # check expiry
+        if decoded.get('exp', 0) < int(time.time()):
+            return None
+
+        return decoded
+    except Exception:
+        return None
+
 
 def lambda_handler(event, context):
     path = event.get('path', '') or event.get('rawPath', '')
@@ -55,7 +97,9 @@ def lambda_handler(event, context):
         return handle_send_otp(body)
     elif "/auth/verify-otp" in path:
         return handle_verify_otp(body)
-    
+    elif "/auth/verify-token" in path:
+        return handle_verify_token(event)
+
     return _response(404, {"error": "Not Found"})
 
 
@@ -63,46 +107,32 @@ def handle_send_otp(body):
     phone = body.get("phone")
     if not phone:
         return _response(400, {"error": "phone is required"})
-        
-    # Standardize phone number format (assuming India +91 if not provided)
+
     if not phone.startswith('+'):
         phone = '+91' + phone[-10:]
 
-    # Combine generate OTP
     otp = str(random.randint(100000, 999999))
-    expires_at = int(time.time()) + 300  # 5 minutes expiry
-    
+    expires_at = int(time.time()) + 300
+
     table = dynamodb.Table(TABLE_NAME)
     try:
-        table.put_item(
-            Item={
-                "phone": phone,
-                "otp": otp,
-                "expires_at": expires_at
-            }
-        )
+        table.put_item(Item={"phone": phone, "otp": otp, "expires_at": expires_at})
     except ClientError as e:
         logger.error(f"DynamoDB Error: {e}")
         return _response(500, {"error": "Database error"})
 
-    # Send SMS via SNS
     try:
-        # We also generate a fallback response for local UI testing if SNS Sandbox restricts sending
         sns_client.publish(
             PhoneNumber=phone,
             Message=f"Your CivicAI verification code is: {otp}. It expires in 5 minutes.",
             MessageAttributes={
-                'AWS.SNS.SMS.SMSType': {
-                    'DataType': 'String',
-                    'StringValue': 'Transactional'
-                }
+                'AWS.SNS.SMS.SMSType': {'DataType': 'String', 'StringValue': 'Transactional'}
             }
         )
         logger.info(f"OTP sent to {phone}")
     except ClientError as e:
         logger.error(f"SNS Error: {e}")
         if "No quota" in str(e) or "sandbox" in str(e).lower():
-            # Soft fallback in dev if AWS sandbox blocks SMS
             logger.warning(f"SNS Sandbox blocked SMS. OTP is {otp}")
             return _response(200, {"success": True, "message": "OTP generated (SNS sandbox restricted)", "dev_otp": otp})
         return _response(500, {"error": f"Failed to send SMS: {str(e)}"})
@@ -113,34 +143,25 @@ def handle_send_otp(body):
 def handle_verify_otp(body):
     phone = body.get("phone")
     user_otp = body.get("otp")
-    
+    role = str(body.get("role") or "citizen").lower()
+
     if not phone or not user_otp:
         return _response(400, {"error": "phone and otp are required"})
+    if role not in VALID_ROLES:
+        return _response(400, {"error": "invalid role"})
 
     if not phone.startswith('+'):
         phone = '+91' + phone[-10:]
 
-    # ── Demo OTP bypass (remove in production) ───────────────────────────
-    # Allows any user to log in with OTP "123456" while SNS sandbox is active
-    if str(user_otp) == "123456":
-        header = base64.urlsafe_b64encode(b'{"alg":"HS256","typ":"JWT"}').decode('utf-8').rstrip("=")
-        payload_dict = {"phone": phone, "exp": int(time.time()) + 86400 * 7}
-        payload = base64.urlsafe_b64encode(json.dumps(payload_dict).encode('utf-8')).decode('utf-8').rstrip("=")
-        signature = base64.urlsafe_b64encode(
-            hmac.new(SECRET_KEY, f"{header}.{payload}".encode('utf-8'), hashlib.sha256).digest()
-        ).decode('utf-8').rstrip("=")
-        token = f"{header}.{payload}.{signature}"
+    # demo OTP bypass — only active when env var DEMO_OTP_ENABLED=true
+    if DEMO_OTP_ENABLED and str(user_otp) == "123456":
+        token = _make_token(phone, role)
         logger.info(f"Demo OTP login for {phone}")
         return _response(200, {
             "success": True,
             "token": token,
-            "user": {
-                "id": f"usr_{phone[-10:]}",
-                "phone": phone,
-                "role": "citizen"
-            }
+            "user": {"id": f"usr_{phone[-10:]}", "phone": phone, "role": role}
         })
-    # ── End demo OTP bypass ──────────────────────────────────────────────
 
     table = dynamodb.Table(TABLE_NAME)
     try:
@@ -162,32 +183,30 @@ def handle_verify_otp(body):
     if str(stored_otp) != str(user_otp):
         return _response(400, {"error": "Invalid OTP"})
 
-    # Clear OTP
-    table.update_item(
-        Key={"phone": phone},
-        UpdateExpression="REMOVE otp, expires_at"
-    )
+    # clear OTP after successful verification
+    table.update_item(Key={"phone": phone}, UpdateExpression="REMOVE otp, expires_at")
 
-    # Generate rudimentary JWT equivalent
-    header = base64.urlsafe_b64encode(b'{"alg":"HS256","typ":"JWT"}').decode('utf-8').rstrip("=")
-    payload_dict = {"phone": phone, "exp": int(time.time()) + 86400 * 7}
-    payload = base64.urlsafe_b64encode(json.dumps(payload_dict).encode('utf-8')).decode('utf-8').rstrip("=")
-    
-    signature = base64.urlsafe_b64encode(
-        hmac.new(SECRET_KEY, f"{header}.{payload}".encode('utf-8'), hashlib.sha256).digest()
-    ).decode('utf-8').rstrip("=")
-    
-    token = f"{header}.{payload}.{signature}"
+    token = _make_token(phone, role)
 
     return _response(200, {
         "success": True,
         "token": token,
-        "user": {
-            "id": f"usr_{phone[-10:]}",
-            "phone": phone,
-            "role": "citizen"
-        }
+        "user": {"id": f"usr_{phone[-10:]}", "phone": phone, "role": role}
     })
+
+
+def handle_verify_token(event):
+    """Endpoint for other Lambdas or frontend to verify a token."""
+    auth_header = event.get('headers', {}).get('Authorization', '') or ''
+    token = auth_header.replace('Bearer ', '').strip()
+    if not token:
+        return _response(401, {"error": "No token provided"})
+
+    decoded = verify_token(token)
+    if not decoded:
+        return _response(401, {"error": "Invalid or expired token"})
+
+    return _response(200, {"success": True, "user": decoded})
 
 
 def _response(status_code, body_obj):

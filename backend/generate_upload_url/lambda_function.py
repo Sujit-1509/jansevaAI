@@ -77,13 +77,13 @@ def lambda_handler(event, context):
         return _error_response(400, "Invalid JSON body")
 
     file_type = body.get("fileType", "image/jpeg")
+    image_index = int(body.get("imageIndex", 1))
 
-    # ── Generate UUID incident ID ────────────────────────────────────────
-    incident_id = str(uuid.uuid4())
+    # reuse an existing incident_id if provided (for multi-image uploads)
+    incident_id = body.get("incidentId") or str(uuid.uuid4())
 
-    # ── S3 key pattern: complaints/{incident_id}.jpg ─────────────────────
     extension = _get_extension(file_type)
-    s3_key = f"complaints/{incident_id}{extension}"
+    s3_key = f"complaints/{incident_id}_{image_index}{extension}"
 
     logger.info(
         "Generating presigned URL — bucket=%s key=%s type=%s",

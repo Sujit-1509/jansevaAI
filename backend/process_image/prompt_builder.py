@@ -17,16 +17,24 @@ def generate_complaint_text(
     category: str,
     severity: str,
     location: str,
+    address: str = None,
 ) -> str:
     """
     Generate a formal municipal complaint description using Amazon Nova Micro.
+    Now accepts an address to generate context-aware, hyper-specific descriptions
+    rather than generic boilerplate.
     """
+    addr_line = f"Address: {address}\n" if address else ""
+    
     prompt_text = (
         f"Generate a formal municipal complaint for:\n"
         f"Issue Type: {category}\n"
         f"Severity: {severity}\n"
-        f"Location: {location}\n\n"
+        f"Coordinates/URL: {location}\n"
+        f"{addr_line}\n"
         f"Write a concise, professional complaint description in 3-4 sentences. "
+        f"If an address is provided, reference the specific street or area naturally "
+        f"in the text to make it specific to the location. "
         f"Return text only, no headers or formatting."
     )
 
@@ -58,8 +66,9 @@ def generate_complaint_text(
     except Exception as exc:
         logger.error("Nova text invocation failed: %s", str(exc))
         # Graceful fallback — never let the Lambda crash here
+        loc_str = address if address else location
         return (
             f"A {severity.lower()}-severity {category} issue has been reported "
-            f"at {location}. Immediate attention is requested from the "
+            f"at {loc_str}. Immediate attention is requested from the "
             f"concerned municipal department."
         )

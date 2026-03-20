@@ -1,15 +1,10 @@
-"""
-lambda_function.py — API endpoint to finalize complaint submission.
-
-Route: POST /complaints
-
-Updates an existing "Pending" complaint in DynamoDB (created by process_image),
-adding user notes, coordinates, and changing the status to "Submitted".
-"""
-
 import json
 import logging
 import os
+import time
+import base64
+import hmac
+import hashlib
 import boto3
 
 logger = logging.getLogger()
@@ -17,6 +12,9 @@ logger.setLevel(logging.INFO)
 
 REGION = os.environ.get('REGION', 'ap-south-1')
 TABLE_NAME = os.environ.get('TABLE_NAME', 'Complaints')
+
+# Requires JWT_SECRET to be passed in environment
+SECRET_KEY = os.environ.get('JWT_SECRET', 'civicai-fallback-secret-key-12345').encode('utf-8')
 
 dynamodb = boto3.resource('dynamodb', region_name=REGION)
 
@@ -26,11 +24,55 @@ CORS_HEADERS = {
     "Access-Control-Allow-Methods": "POST,OPTIONS",
 }
 
+def verify_token(event):
+    """Verify the JWT token locally using HMAC SHA-256."""
+    auth_header = event.get('headers', {}).get('Authorization') or event.get('headers', {}).get('authorization')
+    if not auth_header:
+        return None
+        
+    token = auth_header.replace('Bearer ', '').strip()
+    try:
+        parts = token.split('.')
+        if len(parts) != 3:
+            return None
+
+        header, payload, signature = parts
+
+        # verify signature
+        expected_sig = base64.urlsafe_b64encode(
+            hmac.new(SECRET_KEY, f"{header}.{payload}".encode('utf-8'), hashlib.sha256).digest()
+        ).decode('utf-8').rstrip("=")
+
+        if not hmac.compare_digest(signature, expected_sig):
+            logger.error("Token signature mismatch.")
+            return None
+
+        # decode payload
+        padding = 4 - len(payload) % 4
+        if padding != 4:
+            payload += "=" * padding
+        decoded = json.loads(base64.urlsafe_b64decode(payload))
+
+        # check expiry
+        if decoded.get('exp', 0) < int(time.time()):
+            logger.error("Token expired.")
+            return None
+
+        return decoded
+    except Exception as e:
+        logger.error(f"Local token verification failed: {e}")
+        return None
+
 def lambda_handler(event, context):
     method = event.get('httpMethod', '') or event.get('requestContext', {}).get('http', {}).get('method', '')
 
     if method == "OPTIONS":
         return _response(200, "")
+
+    # Verify JWT First
+    user = verify_token(event)
+    if not user:
+        return _response(401, {"error": "Unauthorized"})
 
     try:
         data = json.loads(event.get('body', '{}'))
@@ -38,34 +80,50 @@ def lambda_handler(event, context):
         return _response(400, {"error": "Invalid request body"})
 
     s3_key = data.get("s3Key")
-    if not s3_key:
-        return _response(400, {"error": "s3Key is required"})
+    s3_keys = data.get("s3Keys", [])
+
+    # backwards compat: if only s3Key was sent, wrap it
+    if not s3_keys and s3_key:
+        s3_keys = [s3_key]
+
+    if not s3_keys:
+        return _response(400, {"error": "s3Key or s3Keys is required"})
+
+    # primary key is always the first one
+    s3_key = s3_keys[0]
 
     try:
-        # Extract incident_id from s3_key (e.g. complaints/123-abc.jpg)
         filename = s3_key.split('/')[-1]
-        incident_id = filename.rsplit('.', 1)[0]
+        name_part = filename.rsplit('.', 1)[0]
+        # strip the _N suffix to get incident_id
+        if '_' in name_part:
+            incident_id = name_part.rsplit('_', 1)[0]
+        else:
+            incident_id = name_part
     except Exception:
         return _response(400, {"error": "Invalid s3Key format"})
 
     table = dynamodb.Table(TABLE_NAME)
 
-    # We use update_item to only set the fields that are passed
-    update_expr = "SET #st = :status"
+    update_expr = "SET #st = :status, images = :imgs"
     expr_attrs = {"#st": "status"}
-    expr_vals = {":status": "Submitted"}
+    expr_vals = {":status": "submitted", ":imgs": s3_keys}
 
     if data.get("userNote"):
         update_expr += ", user_note = :user_note"
         expr_vals[":user_note"] = data["userNote"]
 
-    if data.get("userName"):
-        update_expr += ", user_name = :uname"
-        expr_vals[":uname"] = data["userName"]
+    # Enforce token identity over submitted payload for security
+    user_name = data.get("userName")
+    user_phone = user.get("phone") # Force phone from JWT
 
-    if data.get("userPhone"):
+    if user_name:
+        update_expr += ", user_name = :uname"
+        expr_vals[":uname"] = user_name
+
+    if user_phone:
         update_expr += ", user_phone = :uphone"
-        expr_vals[":uphone"] = data["userPhone"]
+        expr_vals[":uphone"] = user_phone
     
     if data.get("latitude"):
         update_expr += ", latitude = :lat"
@@ -87,12 +145,12 @@ def lambda_handler(event, context):
             ExpressionAttributeNames=expr_attrs,
             ExpressionAttributeValues=expr_vals
         )
-        logger.info(f"Complaint {incident_id} finalized as Submitted")
+        logger.info(f"Complaint {incident_id} finalized as submitted")
         
         return _response(200, {
             "success": True,
             "complaintId": incident_id,
-            "status": "Submitted",
+            "status": "submitted",
             "estimatedResolution": data.get("estimatedResolution", "2-3 days")
         })
 

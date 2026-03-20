@@ -19,9 +19,9 @@ const Worker = () => {
     const handleUpdate = async () => {
         if (!newStatus) return;
         setUpdating(true);
-        await updateComplaintStatus(selected.id, newStatus, notes);
+        await updateComplaintStatus(selected.incident_id, newStatus, notes);
         setAssignments((prev) =>
-            prev.map((a) => (a.id === selected.id ? { ...a, status: newStatus } : a))
+            prev.map((a) => (a.incident_id === selected.incident_id ? { ...a, status: newStatus } : a))
         );
         setSelected(null);
         setNotes('');
@@ -41,10 +41,10 @@ const Worker = () => {
                 {!selected ? (
                     <div className="worker-list">
                         {assignments.map((a) => (
-                            <div key={a.id} className="worker-card card card-glow" onClick={() => setSelected(a)}>
+                            <div key={a.incident_id} className="worker-card card card-glow" onClick={() => setSelected(a)}>
                                 <div className="wc-top">
                                     <div>
-                                        <code className="wc-id">{a.id}</code>
+                                        <code className="wc-id">{a.incident_id}</code>
                                         <StatusBadge status={a.status} />
                                     </div>
                                     <SeverityBadge severity={a.severity} />
@@ -69,7 +69,7 @@ const Worker = () => {
                         </button>
                         <div className="card">
                             <div className="wc-top">
-                                <code className="wc-id">{selected.id}</code>
+                                <code className="wc-id">{selected.incident_id}</code>
                                 <StatusBadge status={selected.status} />
                             </div>
                             <CategoryTag category={selected.category} />

@@ -1,18 +1,3 @@
-"""
-lambda_function.py — Main handler for CivicAI process_image Lambda.
-
-Triggered by an S3 ObjectCreated event. Orchestrates:
-    1. Extract S3 event metadata (bucket, key, incident_id)
-    2. Call YOLO inference server for image classification
-    3. Calculate severity using rule-based logic
-    4. Map category to responsible municipal department
-    5. Generate formal complaint text via Amazon Bedrock (Claude)
-    6. Persist complaint record to DynamoDB
-    7. Send email notification via Amazon SES
-
-All heavy lifting is delegated to modular helper files.
-"""
-
 import json
 import logging
 import urllib.parse
@@ -27,117 +12,50 @@ from department_mapper import get_department
 from prompt_builder import generate_complaint_text
 from priority_calculator import calculate_priority
 
-# ── Structured Logging ───────────────────────────────────────────────────────
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  DynamoDB Helper
-# ═══════════════════════════════════════════════════════════════════════════════
-
 def save_to_dynamodb(item: dict) -> None:
-    """
-    Persist a complaint record to the DynamoDB 'Complaints' table.
-
-    Args:
-        item: Dictionary matching the Complaints table schema.
-
-    Raises:
-        Logs error on failure but does NOT raise — Lambda should not crash.
-    """
     try:
         table = dynamodb_resource.Table(TABLE_NAME)
         table.put_item(Item=item)
-        logger.info(
-            "Saved complaint %s to DynamoDB", item.get("incident_id")
-        )
+        logger.info("Saved complaint %s to DynamoDB", item.get("incident_id"))
     except Exception as exc:
-        logger.error(
-            "DynamoDB put_item failed for %s: %s",
-            item.get("incident_id"),
-            str(exc),
-        )
+        logger.error("DynamoDB put_item failed for %s: %s", item.get("incident_id"), str(exc))
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SES Email Helper
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def send_email_notification(
-    incident_id: str,
-    department: str,
-    category: str,
-    severity: str,
-    complaint_text: str,
-) -> None:
-    """
-    Send an email notification about a new civic complaint via Amazon SES.
-
-    Args:
-        incident_id:    Unique complaint identifier.
-        department:     Responsible municipal department.
-        category:       Detected issue category.
-        severity:       Calculated severity level.
-        complaint_text: Generated formal complaint description.
-
-    Raises:
-        Logs error on failure but does NOT raise.
-    """
+def send_email_notification(incident_id, department, category, severity, complaint_text):
     subject = f"New Civic Complaint - {incident_id}"
 
     body = (
         f"A new civic complaint has been filed.\n\n"
-        f"══════════════════════════════════════\n"
-        f"  Complaint ID : {incident_id}\n"
-        f"  Category     : {category}\n"
-        f"  Severity     : {severity}\n"
-        f"  Department   : {department}\n"
-        f"══════════════════════════════════════\n\n"
+        f"Complaint ID : {incident_id}\n"
+        f"Category     : {category}\n"
+        f"Severity     : {severity}\n"
+        f"Department   : {department}\n\n"
         f"Description:\n{complaint_text}\n\n"
         f"Please take appropriate action.\n"
-        f"— CivicAI Automated System"
     )
 
     try:
         ses_client.send_email(
             Source=SES_SOURCE_EMAIL,
-            Destination={
-                "ToAddresses": [SES_SOURCE_EMAIL],  # Route to ops inbox
-            },
+            Destination={"ToAddresses": [SES_SOURCE_EMAIL]},
             Message={
                 "Subject": {"Data": subject, "Charset": "UTF-8"},
-                "Body": {
-                    "Text": {"Data": body, "Charset": "UTF-8"},
-                },
+                "Body": {"Text": {"Data": body, "Charset": "UTF-8"}},
             },
         )
         logger.info("Email notification sent for %s", incident_id)
-
     except Exception as exc:
-        logger.error(
-            "SES send_email failed for %s: %s", incident_id, str(exc)
-        )
+        logger.error("SES send_email failed for %s: %s", incident_id, str(exc))
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  Lambda Handler
-# ═══════════════════════════════════════════════════════════════════════════════
 
 def lambda_handler(event, context):
-    """
-    AWS Lambda entry point — triggered by S3 ObjectCreated event.
-
-    Args:
-        event:   S3 event payload.
-        context: Lambda runtime context.
-
-    Returns:
-        dict with processing results.
-    """
     logger.info("Received event: %s", json.dumps(event, default=str))
 
-    # ── 1. Extract S3 Event Metadata ─────────────────────────────────────────
+    # 1. extract S3 event metadata
     try:
         record = event["Records"][0]["s3"]
         bucket = record["bucket"]["name"]
@@ -146,98 +64,105 @@ def lambda_handler(event, context):
         logger.error("Malformed S3 event: %s", str(exc))
         return {"status": "Error", "message": "Invalid S3 event payload"}
 
-    # Derive incident_id from the object key
-    # Expected key format: complaints/<uuid>.jpg  (set by generate_upload_url)
-    try:
-        # Extract filename from path and remove extension to get UUID
-        filename = key.split("/")[-1]            # e.g. "abc-123.jpg"
-        incident_id = filename.rsplit(".", 1)[0]  # e.g. "abc-123"
-    except (IndexError, ValueError):
-        incident_id = key.replace("/", "_").rsplit(".", 1)[0]
+    # extract incident_id and image index from key
+    filename = key.split("/")[-1]
+    name_part = filename.rsplit(".", 1)[0]
 
-    logger.info(
-        "Processing — bucket=%s key=%s incident_id=%s",
-        bucket, key, incident_id,
-    )
+    if "_" in name_part:
+        parts = name_part.rsplit("_", 1)
+        incident_id = parts[0]
+        image_index = parts[1]
+    else:
+        incident_id = name_part
+        image_index = "1"
 
-    # ── 2. YOLO Inference ────────────────────────────────────────────────────
-    yolo_result = call_yolo(bucket, key)
-    category = yolo_result["category"]
-    confidence = yolo_result["confidence"]
+    # only process the primary image, skip secondary ones
+    if image_index != "1":
+        logger.info("Skipping secondary image %s (index=%s)", key, image_index)
+        return {"status": "Skipped", "reason": "secondary image"}
 
-    # ── 2b. Third-Party Vision Fallback (when YOLO returns Unknown) ──────
-    if category == "Unknown" or confidence == 0.0:
-        logger.info("YOLO returned Unknown — falling back to Amazon Nova Vision")
-        fallback_result = classify_with_nova(bucket, key)
-        if fallback_result["category"] != "Unknown":
-            category = fallback_result["category"]
-            confidence = fallback_result["confidence"]
-            logger.info(
-                "Amazon Nova Vision fallback succeeded — category=%s confidence=%.2f",
-                category, confidence,
-            )
+    logger.info("Processing primary image — bucket=%s key=%s incident_id=%s", bucket, key, incident_id)
 
-    # ── 3. Severity Calculation ──────────────────────────────────────────────
-    severity = calculate_severity(category, confidence)
-
-    # ── 4. Department Mapping ────────────────────────────────────────────────
-    department = get_department(category)
-
-    # ── 5. Generate Complaint Text (Bedrock) ─────────────────────────────────
-    location = f"s3://{bucket}/{key}"
-    complaint_text = generate_complaint_text(category, severity, location)
-
-    # ── 5b. Priority Score Calculation ────────────────────────────────────────
-    #  Fetch latitude/longitude from the existing DynamoDB record if present
-    #  (set by the frontend during submission via generate_upload_url)
+    # 1.b Pre-fetch existing DynamoDB record early to extract address and timestamp
     latitude = None
     longitude = None
+    address = None
+    existing = {}
+    timestamp = datetime.now(timezone.utc).isoformat()
+    db_timestamp = timestamp
+    
     try:
         table = dynamodb_resource.Table(TABLE_NAME)
         existing = table.get_item(Key={"incident_id": incident_id}).get("Item", {})
         latitude = float(existing.get("latitude", 0)) or None
         longitude = float(existing.get("longitude", 0)) or None
+        address = existing.get("address")
+        db_timestamp = existing.get("timestamp", timestamp)
     except Exception:
         pass
 
+    # 2. YOLO inference
+    yolo_result = call_yolo(bucket, key)
+    category = yolo_result["category"]
+    confidence = yolo_result["confidence"]
+
+    # 2b. vision fallback when YOLO returns Unknown
+    if category == "Unknown" or confidence == 0.0:
+        logger.info("YOLO returned Unknown, falling back to Amazon Nova Vision")
+        fallback_result = classify_with_nova(bucket, key)
+        if fallback_result["category"] != "Unknown":
+            category = fallback_result["category"]
+            confidence = fallback_result["confidence"]
+            logger.info("Nova fallback succeeded — category=%s confidence=%.2f", category, confidence)
+
+    # 3. severity calculation
+    severity = calculate_severity(category, confidence)
+
+    # 4. department mapping
+    department = get_department(category)
+
+    # 5. generate complaint text via bedrock (NOW WITH ADDRESS)
+    location = f"s3://{bucket}/{key}"
+    complaint_text = generate_complaint_text(category, severity, location, address)
+
+    # 5b. priority score (NOW WITH ADDRESS & TIMESTAMP)
     priority_score = calculate_priority(
         category=category,
         severity=severity,
         confidence=confidence,
         latitude=latitude,
         longitude=longitude,
+        address=address,
+        timestamp_str=db_timestamp,
         table_name=TABLE_NAME,
     )
 
-    # ── 6. Persist to DynamoDB ───────────────────────────────────────────────
-    timestamp = datetime.now(timezone.utc).isoformat()
-
+    # 6. persist to dynamodb
     complaint_record = {
         "incident_id": incident_id,
-        "category":    category,
-        "confidence":  str(confidence),  # DynamoDB-safe
-        "severity":    severity,
-        "department":  department,
+        "category": category,
+        "confidence": str(confidence),
+        "severity": severity,
+        "department": department,
         "description": complaint_text,
-        "status":      "Pending",
-        "timestamp":   timestamp,
-        "s3_key":      key,
+        "status": "submitted",
+        "timestamp": db_timestamp,
+        "s3_key": key,
         "priorityScore": priority_score,
     }
 
-    # Preserve user-submitted fields (name, phone, address, lat/lng)
     if latitude:
         complaint_record["latitude"] = str(latitude)
     if longitude:
         complaint_record["longitude"] = str(longitude)
-    for field in ["user_name", "userPhone", "address", "user_note"]:
+    for field in ["user_name", "user_phone", "address", "user_note"]:
         val = existing.get(field)
         if val:
             complaint_record[field] = val
 
     save_to_dynamodb(complaint_record)
 
-    # ── 7. Email Notification ────────────────────────────────────────────────
+    # 7. email notification
     send_email_notification(
         incident_id=incident_id,
         department=department,
@@ -246,13 +171,13 @@ def lambda_handler(event, context):
         complaint_text=complaint_text,
     )
 
-    # ── 8. Return Result ─────────────────────────────────────────────────────
+    # 8. return result
     result = {
-        "status":        "Processed",
-        "incident_id":   incident_id,
-        "category":      category,
-        "severity":      severity,
-        "department":    department,
+        "status": "Processed",
+        "incident_id": incident_id,
+        "category": category,
+        "severity": severity,
+        "department": department,
         "priorityScore": priority_score,
     }
 

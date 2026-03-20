@@ -161,6 +161,10 @@ select {
 .text-muted {
   color: var(--text-secondary);
 }
+.status-text-success {
+  color: var(--success);
+  font-weight: 600;
+}
 .font-medium {
   font-weight: 500;
 }

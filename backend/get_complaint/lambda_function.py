@@ -66,9 +66,10 @@ def lambda_handler(event, context):
         }
 
     logger.info("Found complaint: %s", incident_id)
+    item["status"] = str(item.get("status", "")).strip().lower().replace(" ", "_") or "submitted"
 
     return {
         "statusCode": 200,
         "headers": {**CORS_HEADERS, "Content-Type": "application/json"},
-        "body": json.dumps(item, default=str),
+        "body": json.dumps({"success": True, "complaint": item}, default=str),
     }

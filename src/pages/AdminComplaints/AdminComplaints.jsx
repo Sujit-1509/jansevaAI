@@ -5,20 +5,9 @@ import { getComplaints, updateComplaintStatus } from '../../services/api';
 import { StatusBadge, SeverityBadge, CategoryTag, Loader, EmptyState, PriorityBar } from '../../components/Shared/Shared';
 import './AdminComplaints.css';
 
-const SEVERITY_SCORES = { high: 40, medium: 25, low: 10, 'pending review': 5, pending: 5 };
-const CATEGORY_SCORES = { water: 25, pothole: 20, streetlight: 18, garbage: 15 };
+// Priority score is now exclusively calculated by the backend Lambda
+// and provided via the API.
 
-function calculatePriority(complaint) {
-    if (complaint.priorityScore && complaint.priorityScore !== 50) return complaint.priorityScore;
-    const sev = (complaint.severity || '').toLowerCase();
-    const cat = (complaint.category || '').toLowerCase();
-    const conf = parseFloat(complaint.confidence) || 0;
-    let score = 0;
-    score += SEVERITY_SCORES[sev] || 5;
-    score += CATEGORY_SCORES[cat] || 10;
-    score += Math.round(Math.min(conf, 1.0) * 15);
-    return Math.max(0, Math.min(100, score));
-}
 
 const AdminComplaints = () => {
     const [complaints, setComplaints] = useState([]);
@@ -254,7 +243,7 @@ const AdminComplaints = () => {
                                         <td><SeverityBadge severity={c.severity} /></td>
                                         <td>
                                             <div style={{ width: '80px' }}>
-                                                <PriorityBar score={calculatePriority(c)} />
+                                                <PriorityBar score={c.priorityScore || 0} />
                                             </div>
                                         </td>
                                         <td className="date-cell">

@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import boto3
+import base64
 from datetime import datetime
 
 logger = logging.getLogger()
@@ -27,8 +28,37 @@ CORS_HEADERS = {
 }
 
 
+def _decode_token_role(event):
+    auth_header = event.get("headers", {}).get("Authorization") or event.get("headers", {}).get("authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return None
+
+    token = auth_header.split(" ", 1)[1]
+    parts = token.split(".")
+    if len(parts) != 3:
+        return None
+
+    payload = parts[1]
+    padding = "=" * (-len(payload) % 4)
+    try:
+        decoded = base64.urlsafe_b64decode(payload + padding).decode("utf-8")
+        data = json.loads(decoded)
+    except Exception:
+        return None
+
+    return data.get("role")
+
+
 def lambda_handler(event, context):
     try:
+        role = _decode_token_role(event)
+        if role not in {"admin", "worker"}:
+            return {
+                "statusCode": 403,
+                "headers": CORS_HEADERS,
+                "body": json.dumps({"error": "Forbidden"}),
+            }
+
         # Extract incident ID from path parameters
         path_params = event.get("pathParameters") or {}
         incident_id = path_params.get("id")
