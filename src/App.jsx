@@ -40,7 +40,7 @@ function AppFooter({ links, credit }) {
             <div className="container footer-inner">
                 <div className="footer-brand">
                     <Landmark size={16} />
-                    <span>CivicAI</span>
+                    <span>SmartCityAI</span>
                     <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
                         Smart Municipal Complaint System
                     </span>
@@ -92,7 +92,7 @@ function App() {
                                         { to: '/submit', label: 'Report Issue' },
                                         { to: '/my-complaints', label: 'My Complaints' },
                                     ]}
-                                    credit="Government of India | Smart City Mission | Powered by AI"
+                                    credit="Government of India | Smart City Mission | Powered by SmartCityAI"
                                 />
                             </CitizenLayout>
                         ) : user.role === 'admin' ? (
@@ -114,7 +114,7 @@ function App() {
                                         { to: '/submit', label: 'Report Issue' },
                                         { to: '/my-complaints', label: 'My Complaints' },
                                     ]}
-                                    credit="Government of India | Smart City Mission | Powered by AI"
+                                    credit="Government of India | Smart City Mission | Powered by SmartCityAI"
                                 />
                             </CitizenLayout>
                         </RoleGate>
@@ -132,7 +132,7 @@ function App() {
                                         { to: '/submit', label: 'Report Issue' },
                                         { to: '/my-complaints', label: 'My Complaints' },
                                     ]}
-                                    credit="Government of India | Smart City Mission | Powered by AI"
+                                    credit="Government of India | Smart City Mission | Powered by SmartCityAI"
                                 />
                             </CitizenLayout>
                         </RoleGate>
@@ -150,7 +150,7 @@ function App() {
                                         { to: '/complaints', label: 'Complaints' },
                                         { to: '/worker', label: 'Worker' },
                                     ]}
-                                    credit="Government of India | Smart City Mission | Powered by AI"
+                                    credit="Government of India | Smart City Mission | Powered by SmartCityAI"
                                 />
                             </AppLayout>
                         </RoleGate>
@@ -168,7 +168,7 @@ function App() {
                                         { to: '/complaints', label: 'Complaints' },
                                         { to: '/worker', label: 'Worker' },
                                     ]}
-                                    credit="Government of India | Smart City Mission | Powered by AI"
+                                    credit="Government of India | Smart City Mission | Powered by SmartCityAI"
                                 />
                             </AppLayout>
                         </RoleGate>
@@ -186,7 +186,7 @@ function App() {
                                         { to: '/complaints', label: 'Complaints' },
                                         { to: '/worker', label: 'Worker' },
                                     ]}
-                                    credit="Government of India | Smart City Mission | Powered by AI"
+                                    credit="Government of India | Smart City Mission | Powered by SmartCityAI"
                                 />
                             </AppLayout>
                         </RoleGate>
@@ -203,7 +203,7 @@ function App() {
                                         { to: '/worker', label: 'My Tasks' },
                                         { to: '/complaints', label: 'Complaints' },
                                     ]}
-                                    credit="Government of India | Smart City Mission | Powered by AI"
+                                    credit="Government of India | Smart City Mission | Powered by SmartCityAI"
                                 />
                             </AppLayout>
                         </RoleGate>
@@ -222,7 +222,7 @@ function App() {
                                             { to: '/submit', label: 'Report Issue' },
                                             { to: '/my-complaints', label: 'My Complaints' },
                                         ]}
-                                        credit="Government of India | Smart City Mission | Powered by AI"
+                                        credit="Government of India | Smart City Mission | Powered by SmartCityAI"
                                     />
                                 </CitizenLayout>
                             ) : (
@@ -234,7 +234,7 @@ function App() {
                                             { to: '/complaints', label: 'Complaints' },
                                             { to: '/worker', label: 'Worker' },
                                         ]}
-                                        credit="Government of India | Smart City Mission | Powered by AI"
+                                        credit="Government of India | Smart City Mission | Powered by SmartCityAI"
                                     />
                                 </AppLayout>
                             )}

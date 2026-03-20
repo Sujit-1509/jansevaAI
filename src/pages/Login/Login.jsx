@@ -64,7 +64,7 @@ const Login = ({ onLogin }) => {
                         alt="Emblem of India"
                         className="login-emblem-img"
                     />
-                    <h1>CivicAI</h1>
+                    <h1>SmartCityAI</h1>
                     <p className="text-muted">Smart Municipal Complaint System</p>
                     <p className="login-gov-tag">Government of India · Smart City Mission</p>
                 </div>

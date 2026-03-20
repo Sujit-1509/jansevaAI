@@ -31,7 +31,7 @@ const TopBar = ({ user }) => {
             className="topbar__emblem"
           />
           <div className="topbar__gov-text">
-            <span className="topbar__gov-title">CivicAI — Smart Municipal Complaint System</span>
+            <span className="topbar__gov-title">SmartCityAI — AI-Powered Municipal Complaint System</span>
             <span className="topbar__gov-sub">Government of India · Smart City Mission</span>
           </div>
         </div>

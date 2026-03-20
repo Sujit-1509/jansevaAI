@@ -35,7 +35,7 @@ const Sidebar = ({ role = 'citizen', user, onLogout }) => {
             className="sidebar-emblem-img"
           />
           <div className="sidebar-brand-text">
-            <h2>CivicAI</h2>
+            <h2>SmartCityAI</h2>
             <span>Smart City Mission</span>
           </div>
           <button className="mobile-close-btn" onClick={() => setMobileOpen(false)}>
