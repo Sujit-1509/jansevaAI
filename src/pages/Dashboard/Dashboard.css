@@ -12,25 +12,39 @@
 .dash-live {
     font-size: 11px;
     font-weight: 600;
-    padding: 3px 10px;
+    padding: 4px 12px;
     background: var(--success-bg);
     color: var(--success);
     border-radius: var(--radius-full);
     border: 1px solid rgba(46, 125, 50, 0.15);
     letter-spacing: 0.3px;
     text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: live-pulse 1.5s ease-in-out infinite;
+}
+@keyframes live-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
 }
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: var(--space-md);
-    margin-bottom: var(--space-xl);
+    margin-bottom: var(--space-md);
 }
-.charts-row {
+.dash-charts-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--space-lg);
-    margin-bottom: var(--space-lg);
+    margin-top: var(--space-lg);
 }
 .chart-card h3 {
     font-size: var(--font-size-sm);
@@ -46,16 +60,68 @@
     color: var(--text-secondary) !important;
     font-size: 12px !important;
 }
+
+/* High Priority Alerts */
+.dash-alerts h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    margin-bottom: var(--space-md);
+}
+.alert-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.alert-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: rgba(239, 68, 68, 0.04);
+    border: 1px solid rgba(239, 68, 68, 0.1);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+}
+.alert-item:hover {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.2);
+    transform: translateX(4px);
+}
+.alert-desc {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.alert-score {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--severity-critical);
+    background: rgba(239, 68, 68, 0.08);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+}
+
 @media (max-width: 1024px) {
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    .charts-row {
+    .dash-charts-row {
         grid-template-columns: 1fr;
     }
 }
 @media (max-width: 768px) {
     .stats-grid {
         grid-template-columns: 1fr 1fr;
+    }
+    .alert-item {
+        flex-wrap: wrap;
     }
 }

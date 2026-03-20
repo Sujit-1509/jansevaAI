@@ -372,11 +372,112 @@ async function pollForResult(incidentId) {
 
 export async function getDashboardStats() {
     try {
-        return await api.get('/dashboard/stats');
+        const res = await getComplaints();
+        const complaints = res.complaints || [];
+        return { success: true, stats: computeStats(complaints) };
     } catch (err) {
-        console.warn('API unreachable, using mock dashboard stats:', err.message);
+        console.warn('Stats computation failed, using mock:', err.message);
         return { success: true, stats: mockDashboardStats };
     }
+}
+
+function computeStats(complaints) {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const total = complaints.length;
+    const active = complaints.filter(c => ['submitted', 'assigned', 'in_progress'].includes(c.status)).length;
+    const resolvedAll = complaints.filter(c => ['resolved', 'closed'].includes(c.status));
+    const resolvedToday = resolvedAll.filter(c => {
+        const d = new Date(c.resolvedAt || c.updatedAt || c.timestamp);
+        return d >= todayStart;
+    }).length;
+    const pending = complaints.filter(c => c.status === 'submitted').length;
+
+    // Resolution rate
+    const resolutionRate = total > 0 ? Math.round((resolvedAll.length / total) * 100) : 0;
+
+    // Avg Response Time
+    const responseTimes = resolvedAll
+        .map(c => {
+            const start = new Date(c.timestamp || c.createdAt).getTime();
+            const end = new Date(c.resolvedAt || c.updatedAt || c.timestamp).getTime();
+            return end > start ? (end - start) / (1000 * 60 * 60 * 24) : 0;
+        })
+        .filter(d => d > 0);
+    const avgDays = responseTimes.length > 0
+        ? (responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length).toFixed(1)
+        : '0';
+    const avgResponseTime = `${avgDays} days`;
+
+    // SLA adherence (resolved within 7 days)
+    const withinSLA = responseTimes.filter(d => d <= 7).length;
+    const slaAdherence = responseTimes.length > 0 ? Math.round((withinSLA / responseTimes.length) * 100) : 100;
+
+    // Category breakdown
+    const catCounts = {};
+    const catColors = { road_issue: '#EF4444', pothole: '#EF4444', waste: '#F59E0B', garbage: '#F59E0B', water: '#3B82F6', lighting: '#A855F7', streetlight: '#A855F7' };
+    complaints.forEach(c => {
+        const cat = c.category || 'unknown';
+        catCounts[cat] = (catCounts[cat] || 0) + 1;
+    });
+    const categoryBreakdown = Object.entries(catCounts).map(([name, value]) => ({
+        name: name.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        value,
+        color: catColors[name] || '#64748B',
+    }));
+
+    // Monthly trends (last 6 months)
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlyMap = {};
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${monthNames[d.getMonth()]} ${d.getFullYear().toString().slice(2)}`;
+        monthlyMap[key] = { month: key, complaints: 0, resolved: 0 };
+    }
+    complaints.forEach(c => {
+        const d = new Date(c.timestamp || c.createdAt);
+        const key = `${monthNames[d.getMonth()]} ${d.getFullYear().toString().slice(2)}`;
+        if (monthlyMap[key]) {
+            monthlyMap[key].complaints += 1;
+            if (['resolved', 'closed'].includes(c.status)) monthlyMap[key].resolved += 1;
+        }
+    });
+    const monthlyTrends = Object.values(monthlyMap);
+
+    // Department performance
+    const deptMap = {};
+    complaints.forEach(c => {
+        const dept = c.department || 'General';
+        if (!deptMap[dept]) deptMap[dept] = { dept, resolved: 0, pending: 0 };
+        if (['resolved', 'closed'].includes(c.status)) deptMap[dept].resolved += 1;
+        else deptMap[dept].pending += 1;
+    });
+    const departmentPerformance = Object.values(deptMap).sort((a, b) => (b.resolved + b.pending) - (a.resolved + a.pending));
+
+    // Top hotspot (most frequent locality)
+    const locCounts = {};
+    complaints.forEach(c => {
+        if (c.address) {
+            const locality = c.address.split(',')[0].trim();
+            locCounts[locality] = (locCounts[locality] || 0) + 1;
+        }
+    });
+    const topHotspot = Object.entries(locCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+
+    return {
+        totalComplaints: total,
+        activeComplaints: active,
+        resolvedToday,
+        pendingTriage: pending,
+        resolutionRate,
+        avgResponseTime,
+        slaAdherence,
+        topHotspot,
+        categoryBreakdown,
+        monthlyTrends,
+        departmentPerformance,
+    };
 }
 
 export async function getWorkerAssignments() {

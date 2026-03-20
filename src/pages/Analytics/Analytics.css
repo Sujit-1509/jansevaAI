@@ -22,24 +22,55 @@
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    padding: var(--space-md) var(--space-lg);
+    padding: var(--space-lg);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 4px;
+    gap: 6px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+.analytics-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+.analytics-kpi-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    border-radius: 3px 3px 0 0;
+}
+
+.kpi-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--primary-bg);
+    color: var(--primary);
+    margin-bottom: 4px;
 }
 
 .analytics-kpi-value {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     font-weight: 800;
     color: var(--primary);
+    line-height: 1;
 }
 
 .analytics-kpi-label {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--text-muted);
-    font-weight: 500;
+    font-weight: 600;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .charts-row {
@@ -49,15 +80,60 @@
     margin-bottom: var(--space-lg);
 }
 
+.chart-card {
+    transition: all 0.3s ease;
+}
+.chart-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
 .chart-card h3 {
     font-size: var(--font-size-sm);
     font-weight: 700;
     margin-bottom: var(--space-md);
     color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Summary Row */
+.analytics-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-md);
+}
+.summary-card {
+    text-align: center;
+    padding: var(--space-lg) !important;
+}
+.summary-card h4 {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+.summary-big {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--primary);
+}
+
+.recharts-text {
+    fill: var(--text-muted) !important;
+    font-size: 11px !important;
+}
+.recharts-legend-item-text {
+    color: var(--text-secondary) !important;
+    font-size: 12px !important;
 }
 
 @media (max-width: 1024px) {
-    .analytics-kpi-row {
+    .analytics-kpi-row,
+    .analytics-summary {
         grid-template-columns: repeat(2, 1fr);
     }
     .charts-row {

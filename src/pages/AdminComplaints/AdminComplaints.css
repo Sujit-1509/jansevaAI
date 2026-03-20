@@ -321,3 +321,106 @@
         align-items: flex-start;
     }
 }
+
+/* Active Status Card */
+.status-summary-card.active {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+/* Expand Button */
+.expand-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+    cursor: pointer;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+.expand-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-bg);
+}
+
+/* Expanded Row */
+.expanded-row {
+    background: rgba(59, 130, 246, 0.03) !important;
+}
+.expanded-detail-row td {
+    padding: 0 !important;
+    border-bottom: 2px solid var(--primary-light) !important;
+}
+.expanded-content {
+    display: flex;
+    gap: var(--space-lg);
+    padding: var(--space-lg);
+    animation: slideDown 0.2s ease;
+}
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.expanded-left {
+    flex-shrink: 0;
+    width: 180px;
+}
+.expanded-image {
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+.expanded-image img {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+}
+.expanded-no-image {
+    width: 180px;
+    height: 140px;
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+.expanded-right {
+    flex: 1;
+    min-width: 0;
+}
+.expanded-field {
+    margin-bottom: 10px;
+}
+.expanded-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+    margin-bottom: 4px;
+}
+.expanded-field p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0;
+}
+.expanded-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--space-md);
+}
+
+/* Alternating row colors */
+.admin-table tbody tr:nth-child(4n + 1) {
+    background: rgba(255, 255, 255, 0.01);
+}
