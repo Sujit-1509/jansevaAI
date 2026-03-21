@@ -38,7 +38,7 @@ function AppFooter({ links, credit }) {
             <div className="container footer-inner">
                 <div className="footer-brand">
                     <Landmark size={16} />
-                    <span>SmartCityAI</span>
+                    <span>JanSevaAI</span>
                     <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
                         Smart Municipal Complaint System
                     </span>
@@ -68,19 +68,19 @@ const WORKER_FOOTER = [
     { to: '/worker',     label: 'My Tasks' },
     { to: '/complaints', label: 'Complaints' },
 ];
-const CREDIT = 'Government of India | Smart City Mission | Powered by SmartCityAI';
+const CREDIT = 'Government of India | Smart City Mission | Powered by JanSevaAI';
 
 function App() {
     const [user, setUser] = useState(() => {
-        const saved = localStorage.getItem('civicai_user');
+        const saved = localStorage.getItem('jansevaai_user');
         return saved ? JSON.parse(saved) : null;
     });
 
     const handleLogin = userData => setUser(userData);
 
     const handleLogout = () => {
-        localStorage.removeItem('civicai_user');
-        localStorage.removeItem('civicai_token');
+        localStorage.removeItem('jansevaai_user');
+        localStorage.removeItem('jansevaai_token');
         setUser(null);
         window.location.hash = '#/';
     };

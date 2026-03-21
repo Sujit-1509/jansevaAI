@@ -1,5 +1,5 @@
 """
-prompt_builder.py — Amazon Nova complaint text generator for CivicAI.
+prompt_builder.py — Amazon Nova complaint text generator for JanSevaAI.
 
 Constructs a structured prompt, invokes Amazon Nova Micro in us-east-1, and returns
 a formal municipal complaint description.

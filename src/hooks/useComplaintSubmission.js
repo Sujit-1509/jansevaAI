@@ -74,7 +74,7 @@ export function useComplaintSubmission(location) {
         setError(null);
 
         try {
-            const savedUser = JSON.parse(localStorage.getItem('civicai_user') || '{}');
+            const savedUser = JSON.parse(localStorage.getItem('JanSevaAI_user') || '{}');
             const res = await submitComplaint({
                 analysis,
                 userNote,

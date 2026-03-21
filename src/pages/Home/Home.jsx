@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Camera, MapPin, Zap, Shield, TrendingUp, Cpu, Send, BarChart3, ArrowRight } from 'lucide-react';
 import { getNearbyComplaints } from '../../services/api';
 import { StatusBadge, SeverityBadge, CategoryTag, TimeAgo } from '../../components/Shared/Shared';
-import heroImage from '../../assets/hero-image.jpeg';
+import heroImage from '../../assets/hero-image.png';
 import './Home.css';
 const Home = () => {
     const [nearby, setNearby] = useState([]);
@@ -28,7 +28,7 @@ const Home = () => {
                                 />
                                 Government of India Initiative
                             </div>
-                            <h1>Smart Municipal<br />Complaint System</h1>
+                            <h1>JanSevaAI<br />Municipal Solutions</h1>
                             <p className="hero-desc">
                                 Report civic issues in your city — potholes, garbage, broken streetlights, and more.
                                 Our AI-powered system automatically detects, categorizes, and routes complaints

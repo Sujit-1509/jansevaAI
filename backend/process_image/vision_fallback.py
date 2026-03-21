@@ -1,5 +1,5 @@
 """
-vision_fallback.py — Amazon Nova Vision fallback classifier for CivicAI.
+vision_fallback.py — Amazon Nova Vision fallback classifier for JanSevaAI.
 
 When the YOLOv8 model returns "Unknown", this module
 sends the image to Amazon Nova Lite in us-east-1 for classification.

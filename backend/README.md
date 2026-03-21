@@ -1,6 +1,6 @@
-# CivicAI — Backend Lambda Functions
+# JanSevaAI — Backend Lambda Functions
 
-This directory contains the AWS Lambda function source code for the CivicAI platform.
+This directory contains the AWS Lambda function source code for the JanSevaAI platform.
 
 ## Lambda Functions
 

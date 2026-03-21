@@ -1,6 +1,6 @@
-# CivicAI — AWS Console Setup Guide
+# JanSevaAI — AWS Console Setup Guide
 
-Complete step-by-step instructions to deploy CivicAI on AWS. Follow each section **in order** — later services depend on earlier ones.
+Complete step-by-step instructions to deploy JanSevaAI on AWS. Follow each section **in order** — later services depend on earlier ones.
 
 > **Region**: Use **`ap-south-1`** (Mumbai) throughout. All services must be in the same region.
 
@@ -33,7 +33,7 @@ This bucket stores uploaded complaint images.
 
    | Setting | Value |
    |---|---|
-   | Bucket name | `civicai-images` |
+   | Bucket name | `JanSevaAI-images` |
    | Region | `ap-south-1` |
    | Object Ownership | ACLs disabled |
    | Block all public access | ✅ Enabled (keep all 4 checkboxes checked) |
@@ -45,7 +45,7 @@ This bucket stores uploaded complaint images.
 
 After creating the bucket:
 
-1. Go to **civicai-images** → **Permissions** tab → **CORS configuration** → **Edit**
+1. Go to **JanSevaAI-images** → **Permissions** tab → **CORS configuration** → **Edit**
 2. Paste:
 
 ```json
@@ -135,7 +135,7 @@ You will use this verified email as `SES_SOURCE_EMAIL` environment variable in L
 
 You need **two IAM roles** — one for each Lambda function.
 
-### Role 1: `civicai-lambda-upload-role`
+### Role 1: `JanSevaAI-lambda-upload-role`
 
 For the `generate_upload_url` Lambda.
 
@@ -144,7 +144,7 @@ For the `generate_upload_url` Lambda.
 3. Click **Next**
 4. Attach these policies:
    - `AWSLambdaBasicExecutionRole` (search and check it)
-5. Click **Next** → Name: `civicai-lambda-upload-role` → **Create role**
+5. Click **Next** → Name: `JanSevaAI-lambda-upload-role` → **Create role**
 6. **After creation**, click the role → **Add permissions** → **Create inline policy**
 7. Switch to **JSON** tab and paste:
 
@@ -158,24 +158,24 @@ For the `generate_upload_url` Lambda.
                 "s3:PutObject",
                 "s3:GetObject"
             ],
-            "Resource": "arn:aws:s3:::civicai-images/*"
+            "Resource": "arn:aws:s3:::JanSevaAI-images/*"
         }
     ]
 }
 ```
 
-8. Name: `civicai-s3-upload-policy` → **Create policy**
+8. Name: `JanSevaAI-s3-upload-policy` → **Create policy**
 
 ---
 
-### Role 2: `civicai-lambda-process-role`
+### Role 2: `JanSevaAI-lambda-process-role`
 
 For the `process_image` Lambda.
 
 1. Go to **IAM** → **Roles** → **Create role**
 2. Trusted entity: **AWS service** → **Lambda**
 3. Attach: `AWSLambdaBasicExecutionRole`
-4. Click **Next** → Name: `civicai-lambda-process-role` → **Create role**
+4. Click **Next** → Name: `JanSevaAI-lambda-process-role` → **Create role**
 5. Click the role → **Add permissions** → **Create inline policy** → **JSON**:
 
 ```json
@@ -188,7 +188,7 @@ For the `process_image` Lambda.
             "Action": [
                 "s3:GetObject"
             ],
-            "Resource": "arn:aws:s3:::civicai-images/*"
+            "Resource": "arn:aws:s3:::JanSevaAI-images/*"
         },
         {
             "Sid": "DynamoDB",
@@ -222,7 +222,7 @@ For the `process_image` Lambda.
 }
 ```
 
-6. Name: `civicai-process-policy` → **Create policy**
+6. Name: `JanSevaAI-process-policy` → **Create policy**
 
 ---
 
@@ -237,7 +237,7 @@ Hosts the FastAPI YOLO microservice that classifies images.
 
    | Setting | Value |
    |---|---|
-   | Name | `civicai-yolo-server` |
+   | Name | `JanSevaAI-yolo-server` |
    | AMI | Amazon Linux 2023 or Ubuntu 22.04 |
    | Instance type | `t3.medium` (minimum for YOLO) |
    | Key pair | Create new or use existing |
@@ -267,7 +267,7 @@ pip3 install fastapi uvicorn ultralytics boto3 pillow
 
 # Create the FastAPI app (create predict_server.py)
 # Your YOLO model should expose POST /predict
-# Input:  { "bucket": "civicai-images", "key": "complaints/uuid.jpg" }
+# Input:  { "bucket": "JanSevaAI-images", "key": "complaints/uuid.jpg" }
 # Output: { "category": "pothole", "confidence": 0.92 }
 
 # Run the server
@@ -316,10 +316,10 @@ Generates presigned S3 upload URLs for the frontend.
 
    | Setting | Value |
    |---|---|
-   | Function name | `civicai-generate-upload-url` |
+   | Function name | `JanSevaAI-generate-upload-url` |
    | Runtime | Python 3.12 |
    | Architecture | x86_64 |
-   | Execution role | **Use existing role** → `civicai-lambda-upload-role` |
+   | Execution role | **Use existing role** → `JanSevaAI-lambda-upload-role` |
 
 3. Click **Create function**
 
@@ -339,7 +339,7 @@ Generates presigned S3 upload URLs for the frontend.
 
    | Key | Value |
    |---|---|
-   | `BUCKET_NAME` | `civicai-images` |
+   | `BUCKET_NAME` | `JanSevaAI-images` |
    | `REGION` | `ap-south-1` |
    | `URL_EXPIRY` | `300` |
 
@@ -366,10 +366,10 @@ Processes uploaded images: YOLO → severity → department → Bedrock → Dyna
 
    | Setting | Value |
    |---|---|
-   | Function name | `civicai-process-image` |
+   | Function name | `JanSevaAI-process-image` |
    | Runtime | Python 3.12 |
    | Architecture | x86_64 |
-   | Execution role | **Use existing role** → `civicai-lambda-process-role` |
+   | Execution role | **Use existing role** → `JanSevaAI-lambda-process-role` |
 
 3. Click **Create function**
 
@@ -426,7 +426,7 @@ Upload as a Lambda Layer, then attach it to your function.
    | `MODEL_ID` | `anthropic.claude-v2` |
    | `SES_SOURCE_EMAIL` | `your-verified-email@gmail.com` |
    | `REGION` | `ap-south-1` |
-   | `BUCKET_NAME` | `civicai-images` |
+   | `BUCKET_NAME` | `JanSevaAI-images` |
    | `YOLO_TIMEOUT` | `10` |
 
 3. Click **Save**
@@ -443,7 +443,7 @@ Upload as a Lambda Layer, then attach it to your function.
 
 Now go back to S3 and connect it:
 
-1. Go to **S3** → **civicai-images** → **Properties** tab
+1. Go to **S3** → **JanSevaAI-images** → **Properties** tab
 2. Scroll to **Event notifications** → **Create event notification**
 3. Configure:
 
@@ -453,7 +453,7 @@ Now go back to S3 and connect it:
    | Prefix | `complaints/` |
    | Event types | ✅ `s3:ObjectCreated:Put` |
    | Destination | **Lambda function** |
-   | Lambda function | `civicai-process-image` |
+   | Lambda function | `JanSevaAI-process-image` |
 
 4. Click **Save changes**
 
@@ -474,7 +474,7 @@ Creates the REST API that the frontend calls.
 
    | Setting | Value |
    |---|---|
-   | API name | `CivicAI-API` |
+   | API name | `JanSevaAI-API` |
    | Endpoint type | **Regional** |
 
 4. Click **Create API**
@@ -484,7 +484,7 @@ Creates the REST API that the frontend calls.
 You need these routes:
 
 ```
-POST /upload/presign    → civicai-generate-upload-url Lambda
+POST /upload/presign    → JanSevaAI-generate-upload-url Lambda
 ```
 
 #### Step-by-step for `/upload/presign`:
@@ -505,7 +505,7 @@ POST /upload/presign    → civicai-generate-upload-url Lambda
    - Method type: **POST**
    - Integration type: **Lambda Function**
    - ✅ Lambda Proxy Integration
-   - Lambda function: `civicai-generate-upload-url`
+   - Lambda function: `JanSevaAI-generate-upload-url`
    - Click **Create Method**
 
 #### Enable CORS on the resource:
@@ -539,7 +539,7 @@ Invoke URL: https://xxxxxxxxxx.execute-api.ap-south-1.amazonaws.com/prod
 
 ### Update `.env`
 
-Open `civicai-frontend/.env` and set:
+Open `JanSevaAI-frontend/.env` and set:
 
 ```env
 VITE_API_BASE_URL=https://xxxxxxxxxx.execute-api.ap-south-1.amazonaws.com/prod
@@ -571,7 +571,7 @@ curl -X POST https://YOUR_API_URL/prod/upload/presign \
 ```json
 {
     "incident_id": "uuid-string",
-    "upload_url": "https://civicai-images.s3.amazonaws.com/...",
+    "upload_url": "https://JanSevaAI-images.s3.amazonaws.com/...",
     "s3_key": "complaints/uuid-string.jpg"
 }
 ```
@@ -586,7 +586,7 @@ curl -X PUT "<upload_url_from_step_1>" \
 
 ### Test 3: Check S3 Trigger
 
-1. Go to **CloudWatch** → **Log groups** → `/aws/lambda/civicai-process-image`
+1. Go to **CloudWatch** → **Log groups** → `/aws/lambda/JanSevaAI-process-image`
 2. Check the latest log stream — you should see processing logs
 3. Go to **DynamoDB** → **Complaints** table → **Explore items** — the record should appear
 
@@ -605,11 +605,11 @@ curl -X PUT "<upload_url_from_step_1>" \
 
 | Lambda | Variable | Example Value |
 |---|---|---|
-| Lambda 1 | `BUCKET_NAME` | `civicai-images` |
+| Lambda 1 | `BUCKET_NAME` | `JanSevaAI-images` |
 | Lambda 1 | `REGION` | `ap-south-1` |
 | Lambda 1 | `URL_EXPIRY` | `300` |
 | Lambda 2 | `TABLE_NAME` | `Complaints` |
-| Lambda 2 | `BUCKET_NAME` | `civicai-images` |
+| Lambda 2 | `BUCKET_NAME` | `JanSevaAI-images` |
 | Lambda 2 | `EC2_ENDPOINT` | `http://1.2.3.4:8000/predict` |
 | Lambda 2 | `MODEL_ID` | `anthropic.claude-v2` |
 | Lambda 2 | `SES_SOURCE_EMAIL` | `your-email@gmail.com` |

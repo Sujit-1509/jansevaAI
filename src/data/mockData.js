@@ -285,6 +285,6 @@ export const mockUser = {
     id: 'usr_demo_001',
     name: 'Demo User',
     phone: '+919876543210',
-    email: 'demo@civicai.in',
+    email: 'demo@JanSevaAI.in',
     role: 'citizen',
 };

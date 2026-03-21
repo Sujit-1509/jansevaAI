@@ -17,7 +17,7 @@ REGION = os.environ.get('REGION', 'ap-south-1')
 TABLE_NAME = os.environ.get('TABLE_NAME', 'Users')
 
 # JWT secret MUST be set via environment variable — Lambda will fail to start without it
-SECRET_KEY = os.environ.get('JWT_SECRET', 'civicai-fallback-secret-key-12345').encode('utf-8')
+SECRET_KEY = os.environ.get('JWT_SECRET', 'JanSevaAI-fallback-secret-key-12345').encode('utf-8')
 
 # demo OTP bypass — controlled via env var, disabled by default
 DEMO_OTP_ENABLED = os.environ.get('DEMO_OTP_ENABLED', 'true').lower() == 'true'
@@ -120,7 +120,7 @@ def handle_send_otp(body):
     try:
         sns_client.publish(
             PhoneNumber=phone,
-            Message=f"Your CivicAI verification code is: {otp}. It expires in 5 minutes.",
+            Message=f"Your JanSevaAI verification code is: {otp}. It expires in 5 minutes.",
             MessageAttributes={
                 'AWS.SNS.SMS.SMSType': {'DataType': 'String', 'StringValue': 'Transactional'}
             }

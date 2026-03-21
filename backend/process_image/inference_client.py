@@ -1,5 +1,5 @@
 """
-inference_client.py — YOLO inference caller for CivicAI Lambda.
+inference_client.py — YOLO inference caller for JanSevaAI Lambda.
 
 Sends the uploaded image reference to the FastAPI YOLO inference server
 running on EC2 and returns the classification result.

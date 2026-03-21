@@ -16,7 +16,7 @@ logger.setLevel(logging.INFO)
 
 REGION     = os.environ.get('REGION', 'ap-south-1')
 TABLE_NAME = os.environ.get('TABLE_NAME', 'Complaints')
-SECRET_KEY = os.environ.get('JWT_SECRET', 'civicai-fallback-secret-key-12345').encode('utf-8')
+SECRET_KEY = os.environ.get('JWT_SECRET', 'JanSevaAI-fallback-secret-key-12345').encode('utf-8')
 
 dynamodb = boto3.resource('dynamodb', region_name=REGION)
 

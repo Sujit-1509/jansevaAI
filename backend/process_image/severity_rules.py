@@ -1,5 +1,5 @@
 """
-severity_rules.py — Rule-based severity calculator for CivicAI Lambda.
+severity_rules.py — Rule-based severity calculator for JanSevaAI Lambda.
 
 Assigns a human-readable severity level based on the detected issue
 category and model confidence score. Incorporates confidence directly

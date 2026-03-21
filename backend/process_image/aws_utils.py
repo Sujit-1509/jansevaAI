@@ -1,5 +1,5 @@
 """
-aws_utils.py — Centralized boto3 client factory for CivicAI Lambda.
+aws_utils.py — Centralized boto3 client factory for JanSevaAI Lambda.
 
 Creates and caches boto3 clients for S3, DynamoDB, SES, and Bedrock Runtime.
 Clients are initialized once per Lambda cold-start and reused across invocations.

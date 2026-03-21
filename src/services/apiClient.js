@@ -1,5 +1,5 @@
 /**
- * apiClient.js — Shared HTTP client for CivicAI frontend.
+ * apiClient.js — Shared HTTP client for JanSevaAI frontend.
  *
  * Wraps fetch() with:
  *  - Base URL from VITE_API_BASE_URL env variable
@@ -18,7 +18,7 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api
  * @returns {Promise<object>} — parsed JSON response
  */
 export async function apiRequest(endpoint, options = {}) {
-    const token = localStorage.getItem('civicai_token');
+    const token = localStorage.getItem('JanSevaAI_token');
 
     const headers = {
         'Content-Type': 'application/json',

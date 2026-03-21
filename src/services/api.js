@@ -21,7 +21,7 @@ export async function verifyOtp(phone, otp, role = 'citizen') {
     try {
         const res = await api.post('/auth/verify-otp', { phone, otp, role });
         if (res.token) {
-            localStorage.setItem('civicai_token', res.token);
+            localStorage.setItem('jansevaai_token', res.token);
         }
         return res;
     } catch (err) {

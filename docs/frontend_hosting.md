@@ -1,12 +1,12 @@
-# CivicAI: AWS Frontend Hosting & Final API Setup Guide
+# JanSevaAI: AWS Frontend Hosting & Final API Setup Guide
 
-This guide covers the final steps to make your CivicAI application accessible on the public internet and connect the new features (OTP Auth, Any-Format Uploads, User Descriptions).
+This guide covers the final steps to make your JanSevaAI application accessible on the public internet and connect the new features (OTP Auth, Any-Format Uploads, User Descriptions).
 
 ## Part 1: Deploy New Lambdas
 
-### 1. `civicai-auth` (Real OTP via SNS)
+### 1. `JanSevaAI-auth` (Real OTP via SNS)
 1. Go to **AWS Lambda** → **Create function**.
-2. Name it `civicai-auth`, choose Python 3.12, and create.
+2. Name it `JanSevaAI-auth`, choose Python 3.12, and create.
 3. Paste the contents of `backend/auth/lambda_function.py`.
 4. Go to **Configuration** → **Permissions** → Click the Execution Role.
 5. In IAM, click **Add permissions** → **Attach policies**.
@@ -20,8 +20,8 @@ This guide covers the final steps to make your CivicAI application accessible on
 > **SNS Sandbox Reminder**: Go to the **Amazon SNS Console** → **Mobile** → **Text messaging (SMS)**. 
 > Under **Sandbox destination phone numbers**, click **Add phone number**. Add your own mobile number and verify it. AWS will **only** send OTPs to verified numbers until you request production access.
 
-### 2. `civicai-submit-complaint` (Finalizing Submissions)
-1. Create another Lambda named `civicai-submit-complaint`.
+### 2. `JanSevaAI-submit-complaint` (Finalizing Submissions)
+1. Create another Lambda named `JanSevaAI-submit-complaint`.
 2. Paste the contents of `backend/submit_complaint/lambda_function.py`.
 3. Give its IAM Role `AmazonDynamoDBFullAccess`.
 4. Add Environment Variable `TABLE_NAME` (`Complaints`).
@@ -31,24 +31,24 @@ This guide covers the final steps to make your CivicAI application accessible on
 
 ## Part 2: Update API Gateway
 
-Go to **API Gateway** → your `CivicAI-API`.
+Go to **API Gateway** → your `JanSevaAI-API`.
 
 ### 1. Auth Endpoints
 1. Click **Create Resource** → Path: `auth`.
 2. Under `/auth`, create Resource `send-otp`. Create a **POST** method under it.
    - Integration Type: **Lambda Function**
    - Use Lambda Proxy integration: **Checked**
-   - Function: `civicai-auth`
+   - Function: `JanSevaAI-auth`
 3. Under `/auth`, create Resource `verify-otp`. Create a **POST** method under it.
    - Integration Type: **Lambda Function**
    - Use Lambda Proxy integration: **Checked**
-   - Function: `civicai-auth`
+   - Function: `JanSevaAI-auth`
 
 ### 2. Final Submit Endpoint
 1. Under your existing `/complaints` resource (or create it), create a **POST** method.
    - Integration Type: **Lambda Function**
    - Use Lambda Proxy integration: **Checked**
-   - Function: `civicai-submit-complaint`
+   - Function: `JanSevaAI-submit-complaint`
 
 ### 3. Deploy API
 1. For all new endpoints, click **Enable CORS** to allow frontend access.
@@ -59,7 +59,7 @@ Go to **API Gateway** → your `CivicAI-API`.
 ## Part 3: Host Frontend on S3 & CloudFront
 
 ### 1. Build the App
-Open your terminal inside `civicai-frontend` and run:
+Open your terminal inside `JanSevaAI-frontend` and run:
 ```bash
 npm run build
 ```
@@ -67,7 +67,7 @@ This creates a `dist` folder containing your production-ready files.
 
 ### 2. Create S3 Bucket For Hosting
 1. Go to **S3** → **Create bucket**.
-2. Name it (e.g., `civicai-frontend-prod-domain`).
+2. Name it (e.g., `JanSevaAI-frontend-prod-domain`).
 3. **Block Public Access settings**: Keep this **checked** (CloudFront will bypass it securely).
 4. Create bucket.
 

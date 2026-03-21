@@ -1,5 +1,5 @@
 """
-lambda_function.py — Generate presigned S3 upload URL for CivicAI.
+lambda_function.py — Generate presigned S3 upload URL for JanSevaAI.
 
 Returns a presigned PUT URL that the frontend uses to upload images
 directly to S3, bypassing the Lambda / API Gateway payload limit.
@@ -29,7 +29,7 @@ import boto3
 
 # ── Configuration ────────────────────────────────────────────────────────────
 REGION = os.environ.get("REGION", "ap-south-1")
-BUCKET_NAME = os.environ.get("BUCKET_NAME", "civicai-images")
+BUCKET_NAME = os.environ.get("BUCKET_NAME", "JanSevaAI-images")
 URL_EXPIRY = int(os.environ.get("URL_EXPIRY", "300"))  # 5 minutes
 
 logger = logging.getLogger()
