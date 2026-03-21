@@ -22,7 +22,7 @@ const MOCK_WORKERS = [
 
 const STATUS_OPTIONS = ['submitted', 'assigned', 'in_progress', 'resolved', 'closed'];
 const SEV_OPTIONS    = ['high', 'medium', 'low', 'pending review'];
-const CAT_OPTIONS    = ['road_issue', 'waste', 'water', 'lighting'];
+const CAT_OPTIONS    = ['pothole', 'garbage', 'water', 'streetlight', 'road_issue', 'unknown'];
 
 function severityBadge(sev) {
     const map = { high: 'badge-danger', medium: 'badge-warning', low: 'badge-info', 'pending review': 'badge-muted' };
@@ -111,8 +111,8 @@ export default function AdminComplaints() {
     // ── Filtered list ─────────────────────────────────────────────────────────
     const filtered = complaints.filter(c => {
         if (filterStatus   && c.status   !== filterStatus)   return false;
-        if (filterSeverity && c.severity !== filterSeverity) return false;
-        if (filterCategory && c.category !== filterCategory) return false;
+        if (filterSeverity && (c.severity || '').toLowerCase() !== filterSeverity.toLowerCase()) return false;
+        if (filterCategory && (c.category || '').toLowerCase() !== filterCategory.toLowerCase()) return false;
         if (filterAssigned === 'assigned'   && !c.assigned_to)  return false;
         if (filterAssigned === 'unassigned' && c.assigned_to)   return false;
         if (search) {
@@ -386,8 +386,8 @@ export default function AdminComplaints() {
                                         <td className="col-id">
                                             <span className="id-text">{c.incident_id?.slice(0, 8)}…</span>
                                         </td>
-                                        <td><span className="cat-pill">{(c.category || 'unknown').replace('_', ' ')}</span></td>
-                                        <td><span className={severityBadge(c.severity)}>{c.severity}</span></td>
+                                        <td><span className="cat-pill">{(c.category || 'unknown').replace(/_/g, ' ')}</span></td>
+                                        <td><span className={severityBadge((c.severity || '').toLowerCase())}>{(c.severity || 'pending review').toUpperCase()}</span></td>
                                         <td>
                                             <div className="priority-bar-wrap">
                                                 <div className="priority-bar" style={{ width: `${c.priorityScore || 0}%`, background: c.priorityScore > 70 ? 'var(--color-text-danger)' : c.priorityScore > 40 ? 'var(--color-text-warning)' : 'var(--color-text-info)' }} />

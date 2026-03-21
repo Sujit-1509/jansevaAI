@@ -35,8 +35,8 @@ function parseNumber(value) {
  */
 export function normalizeComplaint(raw = {}) {
     const incidentId  = raw.incident_id || raw.id || '';
-    const category    = String(raw.category || '').toLowerCase() || 'road_issue';
-    const priorityScore = parseNumber(raw.priorityScore) ?? 0;
+    const category    = String(raw.category || '').toLowerCase() || 'unknown';
+    const priorityScore = parseNumber(raw.priorityScore) ?? parseNumber(raw.priority_score) ?? parseNumber(raw.priority) ?? 0;
     const confidence    = parseNumber(raw.confidence) ?? 0;
     const latitude      = parseNumber(raw.latitude);
     const longitude     = parseNumber(raw.longitude);
@@ -65,7 +65,7 @@ export function normalizeComplaint(raw = {}) {
         // ── Classification ────────────────────────────────────────────────
         category,
         subCategory: raw.subCategory || raw.sub_category || category,
-        severity:    String(raw.severity || 'medium').toLowerCase(),
+        severity:    String(raw.severity || 'pending review').toLowerCase(),
         status:      normalizeStatus(raw.status),
         department:  raw.department || '',
 
