@@ -7,18 +7,12 @@ import {
     assignComplaint,
     bulkUpdateComplaints,
     getSlaBreaches,
+    getWorkers,
 } from '../../services/api';
 import { normalizeStatus } from '../../services/complaintModel';
 import './AdminComplaints.css';
 
-// ── Mock worker roster — replace with a real /workers API when available ──────
-const MOCK_WORKERS = [
-    { phone: '+919001000001', name: 'Ramesh Kumar',  dept: 'Road Department' },
-    { phone: '+919001000002', name: 'Sunita Devi',   dept: 'Sanitation' },
-    { phone: '+919001000003', name: 'Arjun Singh',   dept: 'Water Board' },
-    { phone: '+919001000004', name: 'Priya Nair',    dept: 'Electrical Department' },
-    { phone: '+919001000005', name: 'Mohan Prasad',  dept: 'Road Department' },
-];
+// workers list is fetched from backend now
 
 const STATUS_OPTIONS = ['submitted', 'assigned', 'in_progress', 'resolved', 'closed'];
 const SEV_OPTIONS    = ['high', 'medium', 'low', 'pending review'];
@@ -47,6 +41,7 @@ export default function AdminComplaints() {
     const [complaints, setComplaints]     = useState([]);
     const [loading, setLoading]           = useState(true);
     const [error, setError]               = useState('');
+    const [workersList, setWorkersList]   = useState([]);
 
     // ── SLA breach banner ────────────────────────────────────────────────────
     const [slaBreaches, setSlaBreaches]   = useState([]);
@@ -92,13 +87,15 @@ export default function AdminComplaints() {
         setLoading(true);
         setError('');
         try {
-            const [res, slaRes] = await Promise.all([
+            const [res, slaRes, workersRes] = await Promise.all([
                 getComplaints(),
                 getSlaBreaches(),
+                getWorkers()
             ]);
             setComplaints(res.complaints || []);
             setSlaBreaches(slaRes.breached || []);
             setSlaWarnings(slaRes.warning || []);
+            setWorkersList(workersRes.workers || []);
         } catch (e) {
             setError('Failed to load complaints.');
         } finally {
@@ -152,7 +149,7 @@ export default function AdminComplaints() {
         if (!assignWorker) return;
         setAssignLoading(true);
         try {
-            const worker = MOCK_WORKERS.find(w => w.phone === assignWorker);
+            const worker = workersList.find(w => w.phone === assignWorker);
             await assignComplaint(
                 assignModal.incident_id,
                 assignWorker,
@@ -202,7 +199,7 @@ export default function AdminComplaints() {
     async function handleBulkAssign() {
         if (!bulkWorker) return;
         setBulkLoading(true);
-        const worker = MOCK_WORKERS.find(w => w.phone === bulkWorker);
+        const worker = workersList.find(w => w.phone === bulkWorker);
         try {
             const ids = [...selected];
             await bulkUpdateComplaints({
@@ -447,8 +444,8 @@ export default function AdminComplaints() {
                         <label className="form-label">Select worker</label>
                         <select className="modal-select" value={assignWorker} onChange={e => setAssignWorker(e.target.value)}>
                             <option value="">— choose worker —</option>
-                            {MOCK_WORKERS.map(w => (
-                                <option key={w.phone} value={w.phone}>{w.name} ({w.dept})</option>
+                            {workersList.map(w => (
+                                <option key={w.phone} value={w.phone}>{w.name} ({w.department || 'General'})</option>
                             ))}
                         </select>
                         <label className="form-label" style={{ marginTop: '12px' }}>Note (optional)</label>
@@ -483,8 +480,8 @@ export default function AdminComplaints() {
                         <label className="form-label">Select worker</label>
                         <select className="modal-select" value={bulkWorker} onChange={e => setBulkWorker(e.target.value)}>
                             <option value="">— choose worker —</option>
-                            {MOCK_WORKERS.map(w => (
-                                <option key={w.phone} value={w.phone}>{w.name} ({w.dept})</option>
+                            {workersList.map(w => (
+                                <option key={w.phone} value={w.phone}>{w.name} ({w.department || 'General'})</option>
                             ))}
                         </select>
                         <label className="form-label" style={{ marginTop: '12px' }}>Note (optional)</label>

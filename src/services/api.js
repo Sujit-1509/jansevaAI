@@ -30,6 +30,35 @@ export async function verifyOtp(phone, otp, role = 'citizen') {
     }
 }
 
+// ─── Workers (Admin) ─────────────────────────────────────────────────────────
+
+export async function getWorkers() {
+    try {
+        return await api.get('/workers');
+    } catch (err) {
+        console.error('API Error in getWorkers:', err.message);
+        return { success: false, workers: [] };
+    }
+}
+
+export async function addWorker(workerData) {
+    try {
+        return await api.post('/workers', workerData);
+    } catch (err) {
+        console.error('API Error in addWorker:', err.message);
+        throw err;
+    }
+}
+
+export async function removeWorker(phone) {
+    try {
+        return await api.delete(`/workers/${encodeURIComponent(phone)}`);
+    } catch (err) {
+        console.error('API Error in removeWorker:', err.message);
+        throw err;
+    }
+}
+
 // ─── Complaints (read) ───────────────────────────────────────────────────────
 
 export async function getComplaints(filters = {}) {

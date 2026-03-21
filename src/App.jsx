@@ -10,6 +10,7 @@ import ComplaintDetail from './pages/ComplaintDetail/ComplaintDetail';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Analytics from './pages/Analytics/Analytics';
 import AdminComplaints from './pages/AdminComplaints/AdminComplaints';
+import AdminWorkers from './pages/AdminWorkers/AdminWorkers';
 import Worker from './pages/Worker/Worker';
 import Login from './pages/Login/Login';
 
@@ -149,6 +150,19 @@ function App() {
                         <RoleGate user={user} roles={['admin']}>
                             <AppLayout role="admin" user={user} onLogout={handleLogout}>
                                 <Analytics />
+                                <AppFooter links={ADMIN_FOOTER} credit={CREDIT} />
+                            </AppLayout>
+                        </RoleGate>
+                    }
+                />
+
+                {/* ── Admin Workers Management ── */}
+                <Route
+                    path="/admin/workers"
+                    element={
+                        <RoleGate user={user} roles={['admin']}>
+                            <AppLayout role="admin" user={user} onLogout={handleLogout}>
+                                <AdminWorkers />
                                 <AppFooter links={ADMIN_FOOTER} credit={CREDIT} />
                             </AppLayout>
                         </RoleGate>

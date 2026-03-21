@@ -140,6 +140,8 @@ def handle_send_otp(body):
     return _response(200, {"success": True, "message": "OTP sent successfully"})
 
 
+WORKERS_TABLE_NAME = os.environ.get('WORKERS_TABLE_NAME', 'Workers')
+
 def handle_verify_otp(body):
     phone = body.get("phone")
     user_otp = body.get("otp")
@@ -182,6 +184,18 @@ def handle_verify_otp(body):
 
     if str(stored_otp) != str(user_otp):
         return _response(400, {"error": "Invalid OTP"})
+
+    # Check if a Worker is actually registered in the Workers table
+    if role == 'worker':
+        workers_table = dynamodb.Table(WORKERS_TABLE_NAME)
+        try:
+            worker_res = workers_table.get_item(Key={"phone": phone})
+            if "Item" not in worker_res:
+                logger.warning(f"Unauthorized worker login attempt for phone: {phone}")
+                return _response(403, {"error": "Phone number is not registered as a worker. Contact your Administrator."})
+        except ClientError as e:
+            logger.error(f"DynamoDB Error checking worker table: {e}")
+            return _response(500, {"error": "Database error during worker verification"})
 
     # clear OTP after successful verification
     table.update_item(Key={"phone": phone}, UpdateExpression="REMOVE otp, expires_at")
