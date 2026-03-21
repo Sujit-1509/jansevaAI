@@ -72,8 +72,9 @@ const SubmitComplaint = () => {
                         <div
                             className="card"
                             style={{
-                                background: 'var(--danger)',
-                                color: '#fff',
+                                background: 'var(--bg-danger, #fef2f2)',
+                                color: 'var(--color-text-danger, #dc2626)',
+                                border: '1px solid var(--border-danger, #fecaca)',
                                 padding: 'var(--space-sm) var(--space-md)',
                                 marginBottom: 'var(--space-md)',
                                 borderRadius: '8px',
@@ -86,7 +87,7 @@ const SubmitComplaint = () => {
                             <span>{error}</span>
                             <button
                                 onClick={() => setError(null)}
-                                style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#fff' }}
+                                style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--color-text-danger, #dc2626)', cursor: 'pointer' }}
                             >
                                 Dismiss
                             </button>

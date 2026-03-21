@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, ThumbsUp, Share2, Clock, User, CheckCircle, Camera, Trash2 } from 'lucide-react';
+import { ArrowLeft, MapPin, ThumbsUp, Share2, Clock, User, CheckCircle, Camera, Trash2, X, AlertCircle } from 'lucide-react';
 import { getComplaintById, updateComplaintStatus, upvoteComplaint, deleteComplaint } from '../../services/api';
 import { StatusBadge, SeverityBadge, CategoryTag, PriorityBar, Loader, TimeAgo } from '../../components/Shared/Shared';
 import './ComplaintDetail.css';
@@ -75,8 +75,9 @@ const ComplaintDetail = () => {
     const [updatingStatus, setUpdatingStatus] = useState(false);
     const [upvotes,        setUpvotes]        = useState(0);
     const [hasUpvoted,     setHasUpvoted]     = useState(false);
+    const [toast,          setToast]          = useState(null);
 
-    const user = JSON.parse(localStorage.getItem('civicai_user') || '{}');
+    const user = JSON.parse(localStorage.getItem('jansevaai_user') || '{}');
     const canUpdateStatus = user.role === 'admin' || user.role === 'worker';
     const backLink = canUpdateStatus ? '/complaints' : '/my-complaints';
 
@@ -122,6 +123,11 @@ const ComplaintDetail = () => {
         }
     };
 
+    const showToast = (msg) => {
+        setToast(msg);
+        setTimeout(() => setToast(null), 4000);
+    };
+
     const handleDelete = async () => {
         if (window.confirm("Are you sure you want to delete this complaint? This cannot be undone.")) {
             try {
@@ -129,11 +135,11 @@ const ComplaintDetail = () => {
                 if (res.success) {
                     navigate(backLink);
                 } else {
-                    alert('Failed to delete complaint from server.');
+                    showToast('Failed to delete complaint from server.');
                 }
             } catch (err) {
                 console.error('Delete failed:', err);
-                alert('Error deleting complaint.');
+                showToast('Error deleting complaint.');
             }
         }
     };
@@ -158,11 +164,11 @@ const ComplaintDetail = () => {
                     ],
                 }));
             } else {
-                alert('Failed to update status');
+                showToast('Failed to update status');
             }
         } catch (error) {
             console.error(error);
-            alert('Error updating status');
+            showToast('Error updating status');
         } finally {
             setUpdatingStatus(false);
         }
@@ -171,6 +177,13 @@ const ComplaintDetail = () => {
     return (
         <div className="detail-page">
             <div className="container">
+                {toast && (
+                    <div style={{ background: 'var(--bg-danger, #fef2f2)', color: 'var(--color-text-danger, #dc2626)', border: '1px solid var(--border-danger, #fecaca)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', fontWeight: 500 }}>
+                        <AlertCircle size={16} />
+                        <span style={{ flex: 1 }}>{toast}</span>
+                        <button onClick={() => setToast(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 2 }}><X size={14} /></button>
+                    </div>
+                )}
                 <Link to={backLink} className="back-link"><ArrowLeft size={16} /> Back to Complaints</Link>
 
                 <div className="detail-grid">
@@ -183,7 +196,7 @@ const ComplaintDetail = () => {
                                     {isOwner && (
                                         <button 
                                             onClick={handleDelete}
-                                            style={{ padding: '6px', background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                            style={{ padding: '6px', background: 'var(--bg-card)', border: '1px solid var(--border-medium)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                                             title="Delete Complaint"
                                         >
                                             <Trash2 size={16} color="var(--danger)" />
@@ -197,11 +210,11 @@ const ComplaintDetail = () => {
                                             style={{
                                                 padding: '6px 12px',
                                                 borderRadius: 20,
-                                                border: '1px solid var(--border-color)',
+                                                border: '1px solid var(--border-medium)',
                                                 fontSize: '0.85rem',
                                                 fontWeight: 600,
                                                 cursor: 'pointer',
-                                                backgroundColor: 'var(--surface-color)',
+                                                backgroundColor: 'var(--bg-card)',
                                                 outline: 'none',
                                             }}
                                             value={c.status || 'submitted'}

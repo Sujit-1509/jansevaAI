@@ -1,17 +1,29 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Camera, MapPin, Zap, Shield, TrendingUp, Cpu, Send, BarChart3, ArrowRight } from 'lucide-react';
-import { getNearbyComplaints } from '../../services/api';
+import { getNearbyComplaints, getDashboardStats } from '../../services/api';
 import { StatusBadge, SeverityBadge, CategoryTag, TimeAgo } from '../../components/Shared/Shared';
 import heroImage from '../../assets/hero-image.png';
 import './Home.css';
 const Home = () => {
     const [nearby, setNearby] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({ total: '—', resolutionRate: '—', avgResponseTime: '—', departments: '—' });
     useEffect(() => {
         getNearbyComplaints(18.52, 73.85).then((res) => {
             setNearby(res.complaints);
             setLoading(false);
+        });
+        getDashboardStats().then((res) => {
+            if (res.success && res.stats) {
+                const s = res.stats;
+                setStats({
+                    total: (s.totalComplaints ?? s.total ?? 0).toLocaleString('en-IN'),
+                    resolutionRate: `${s.resolutionRate ?? 0}%`,
+                    avgResponseTime: s.avgResponseTime ?? '—',
+                    departments: Object.keys(s.categoryBreakdown || {}).length || 4,
+                });
+            }
         });
     }, []);
     return (
@@ -56,19 +68,19 @@ const Home = () => {
                     </div>
                     <div className="hero-stats animate-fade-in">
                         <div className="hero-stat">
-                            <span className="hero-stat-value">1,247</span>
+                            <span className="hero-stat-value">{stats.total}</span>
                             <span className="hero-stat-label">Issues Reported</span>
                         </div>
                         <div className="hero-stat">
-                            <span className="hero-stat-value">75%</span>
+                            <span className="hero-stat-value">{stats.resolutionRate}</span>
                             <span className="hero-stat-label">Resolved</span>
                         </div>
                         <div className="hero-stat">
-                            <span className="hero-stat-value">2.3 days</span>
+                            <span className="hero-stat-value">{stats.avgResponseTime}</span>
                             <span className="hero-stat-label">Avg Response</span>
                         </div>
                         <div className="hero-stat">
-                            <span className="hero-stat-value">12</span>
+                            <span className="hero-stat-value">{stats.departments}</span>
                             <span className="hero-stat-label">Departments</span>
                         </div>
                     </div>
