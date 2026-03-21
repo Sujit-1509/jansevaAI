@@ -1,50 +1,150 @@
-/* ── Append these rules to the existing Dashboard.css ── */
+/* ── SmartCityAI Dashboard — Premium Styling ── */
+.dashboard-page { padding: 20px 24px 40px; background: var(--gradient-bg); min-height: calc(100vh - 80px); }
+
+/* KPI Grid */
+.dash-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.dash-kpi {
+  position: relative;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  overflow: hidden;
+}
+.dash-kpi::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--gradient-primary);
+  border-radius: 3px 3px 0 0;
+}
+.dash-kpi:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(21, 101, 192, 0.12);
+}
+.dash-kpi-icon {
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(21, 101, 192, 0.08), rgba(21, 101, 192, 0.02));
+  color: var(--primary);
+}
+.dash-kpi-val {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+.dash-kpi-label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+  font-weight: 500;
+}
+.dash-kpi-trend {
+  font-size: 11px;
+  margin-top: 3px;
+  font-weight: 500;
+}
+.dash-kpi-trend.up { color: var(--color-text-success); }
+.dash-kpi-trend.down { color: var(--color-text-danger); }
+
+/* Charts section */
+.dash-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.dash-chart-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 14px;
+  padding: 20px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.dash-chart-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+.dash-chart-card h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 14px;
+}
+
+/* SLA Alerts card */
+.sla-alerts-card {
+  border-left: 3px solid var(--danger) !important;
+}
 
 /* SLA pill in dashboard alert list */
 .sla-pill-dash {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 99px;
-    font-size: 11px;
-    font-weight: 500;
-    white-space: nowrap;
-    flex-shrink: 0;
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Assignee tag in recent-complaints table */
 .assignee-tag {
-    display: inline-block;
-    background: var(--color-background-info);
-    color: var(--color-text-info);
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 99px;
-    white-space: nowrap;
+  display: inline-block;
+  background: var(--color-background-info);
+  color: var(--color-text-info);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  white-space: nowrap;
 }
 
-/* Alert panel header — title + "View all" side by side */
+/* Alert panel header */
 .alert-panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
 }
-.alert-panel-header h3 {
-    margin: 0;
-}
+.alert-panel-header h3 { margin: 0; }
 
-/* Assignee column in alert rows */
 .alert-assignee {
-    font-size: 11px;
-    color: var(--color-text-info);
-    background: var(--color-background-info);
-    padding: 2px 8px;
-    border-radius: 99px;
-    white-space: nowrap;
-    margin-left: auto;
+  font-size: 11px;
+  color: var(--color-text-info);
+  background: var(--color-background-info);
+  padding: 2px 8px;
+  border-radius: 99px;
+  white-space: nowrap;
+  margin-left: auto;
 }
 
-/* SLA alerts card — slightly more prominent border */
-.sla-alerts-card {
-    border-color: var(--color-border-danger);
+/* Recent complaints table */
+.dash-recent {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 14px;
+  padding: 20px;
+}
+.dash-recent h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 14px;
+}
+
+@media (max-width: 900px) {
+  .dash-charts { grid-template-columns: 1fr; }
+  .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
 }
