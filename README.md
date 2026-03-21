@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Emblem_of_India.svg/120px-Emblem_of_India.svg.png" alt="Emblem of India" width="80" />
+  <img src="src/assets/github-banner.png" alt="JanSevaAI Branding" width="600" />
 </p>
 
 <h1 align="center">JanSevaAI — Smart Municipal Complaint System</h1>
@@ -198,7 +198,7 @@ JanSevaAI-frontend/
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/JanSevaAI.git
+git clone https://github.com/Sujit-1509/jansevaAI.git
 cd JanSevaAI-frontend
 npm install
 ```
