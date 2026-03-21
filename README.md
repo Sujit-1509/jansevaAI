@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>AI-Powered Civic Engagement Platform</strong><br/>
-  AI for Bharat Hackathon — AI for Communities Track
+  VISHWANOVA 2026 — National Level Project Competition (MIT-WPU, Pune)
 </p>
 
 <p align="center">
@@ -264,7 +264,7 @@ Detailed setup guides for each AWS service:
 
 ## Team
 
-Built for the **AI for Bharat Hackathon** — AI for Communities Track.
+Built for the **VISHWANOVA 2026** — National Level Project Competition (MIT-WPU, Pune).
 
 ---
 
