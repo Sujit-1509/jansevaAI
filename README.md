@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src/assets/github-banner.png" alt="JanSevaAI Branding" width="600" />
+  <img src="src/assets/hero-image.png" alt="JanSevaAI Hero" width="600" />
 </p>
 
 <h1 align="center">JanSevaAI — Smart Municipal Complaint System</h1>
