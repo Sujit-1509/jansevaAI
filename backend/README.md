@@ -9,9 +9,16 @@ This directory contains the AWS Lambda function source code for the JanSevaAI pl
 | `auth/` | `POST /auth/send-otp`, `POST /auth/verify-otp` | OTP-based phone authentication via AWS SNS |
 | `generate_upload_url/` | `POST /upload/presign` | Generates presigned S3 PUT URLs for direct image upload |
 | `process_image/` | *(S3 trigger)* | AI pipeline — YOLO inference → severity → Bedrock description → DynamoDB |
-| `submit_complaint/` | `POST /complaints` | Finalizes complaint with user notes, GPS, and sets status to "Submitted" |
-| `get_user_complaints/` | `GET /complaints` | Lists complaints, optionally filtered by `phone` query parameter |
+| `submit_complaint/` | `POST /complaints` | Finalizes complaint submission with user notes/GPS |
+| `get_user_complaints/` | `GET /complaints` | Lists complaints, with multi-role filtering support |
 | `get_complaint/` | `GET /complaints/{id}` | Retrieves a single complaint by `incident_id` |
+| `update_complaint_status/` | `PATCH /complaints/{id}/status` | Updates status + audit log + GPS resolve stamp |
+| `bulk_update/` | `POST /complaints/bulk` | Administrative tool for batch status/assignment updates |
+| `upvote_complaint/` | `POST /complaints/{id}/upvote` | Increments upvote count and dynamic priority score |
+| `get_nearby_complaints/` | `GET /complaints/nearby` | Haversine distance-based spatial filtering |
+| `assign_complaint/` | `POST /complaints/{id}/assign` | Explicit assignment to field workers with notes |
+| `delete_complaint/` | `DELETE /complaints/{id}` | Administrative removal of incident records |
+| `manage_workers/` | `ANY /api/workers` | Full CRUD management for the worker registry |
 
 ## Environment Variables
 

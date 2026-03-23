@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://dpsfubu0rsyo3.cloudfront.net">Live Demo</a> ·
+  <a href="https://d1lggct31hc8gn.cloudfront.net">Live Demo</a> ·
   <a href="#architecture">Architecture</a> ·
   <a href="#tech-stack">Tech Stack</a> ·
   <a href="#setup">Setup</a>
@@ -49,8 +49,13 @@ Citizens authenticate via OTP (SMS) and can track their complaints in real-time.
 | **YOLOv8 Vision AI** | Custom-trained model with robust issue detection + confidence scoring |
 | **LLM Descriptions** | Amazon Bedrock (Claude) generates formal complaint text automatically |
 | **GPS Auto-Detect** | Real-time location tagging with coordinates |
+| **GPS Proof-of-Work** | Workers capture geolocation at resolve-time to prove on-site resolution |
 | **OTP Authentication** | Secure phone-based login via AWS SNS |
-| **User-Specific Tracking** | Citizens only see their own submitted complaints |
+| **CSV Export** | Download filtered complaint reports for administrative analysis |
+| **Draft Preservation** | Progress is saved to sessionStorage — no data loss on page refresh |
+| **Stability Plus** | Global React **ErrorBoundary** prevents blank screens on API failures |
+| **Admin Analytics** | Real-time charts, department performance tracking, and worker management |
+| **Worker Dashboard** | Specialized view for field teams to accept, reject, and resolve tasks |
 | **Smart Routing** | Auto-assignment to PWD, Sanitation, Electrical, or Water departments |
 | **Mobile Responsive** | Fully responsive design for desktop and mobile browsers |
 
@@ -70,15 +75,17 @@ Citizens authenticate via OTP (SMS) and can track their complaints in real-time.
 │                       AWS API GATEWAY (REST)                         │
 │                                                                      │
 │  POST /auth/send-otp        POST /upload/presign                     │
-│  POST /auth/verify-otp      POST /complaints                        │
+│  POST /auth/verify-otp      POST /complaints                         │
 │  GET  /complaints            GET  /complaints/{id}                   │
-└────┬──────────┬──────────┬──────────┬──────────┬────────────────────┘
-     │          │          │          │          │
-     ▼          ▼          ▼          ▼          ▼
-  ┌──────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐
-  │ Auth │  │Upload  │  │Submit  │  │  Get   │  │  Get   │
-  │Lambda│  │Presign │  │Complnt │  │Complnts│  │Complnt │
-  └──┬───┘  └───┬────┘  └───┬────┘  └───┬────┘  └───┬────┘
+│  GET  /complaints/nearby     POST /complaints/bulk                    │
+│  PATCH /complaints/{id}/status POST /complaints/{id}/upvote          │
+└────┬──────────┬──────────┬──────────┬──────────┬──────────┬──────────┘
+     │          │          │          │          │          │
+     ▼          ▼          ▼          ▼          ▼          ▼
+  ┌──────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐
+  │ Auth │  │Upload  │  │Submit  │  │Status  │  │Nearby  │  │Bulk    │
+  │Lambda│  │Presign │  │Complnt │  │Update  │  │Lambda  │  │Update  │
+  └──┬───┘  └───┬────┘  └───┬────┘  └───┬────┘  └───┬────┘  └───┬────┘
      │          │            │           │           │
      ▼          ▼            ▼           ▼           ▼
   ┌──────┐  ┌──────┐     ┌────────────────────────────┐
@@ -165,6 +172,13 @@ JanSevaAI-frontend/
 │   ├── submit_complaint/         # Finalize complaint submission
 │   ├── get_user_complaints/      # List complaints (with phone filter)
 │   ├── get_complaint/            # Get single complaint by ID
+│   ├── update_complaint_status/  # Update status + GPS stamp log
+│   ├── bulk_update/              # Worker assignment & status in bulk
+│   ├── upvote_complaint/         # Increment upvotes & priority score
+│   ├── get_nearby_complaints/    # Haversine distance-based filtering
+│   ├── assign_complaint/         # Manual assignment to field team
+│   ├── delete_complaint/         # Admin removal of incidents
+│   ├── manage_workers/           # CRUD operations for worker registry
 │   └── README.md                 # Lambda documentation
 │
 ├── docs/                         # Setup & deployment guides
