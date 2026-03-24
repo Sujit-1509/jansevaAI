@@ -10,7 +10,7 @@ const MyComplaints = () => {
     const [filter, setFilter] = useState('all');
     const [categoryFilter, setCategoryFilter] = useState('all');
     useEffect(() => {
-        const savedUser = JSON.parse(localStorage.getItem('civicai_user') || '{}');
+        const savedUser = JSON.parse(localStorage.getItem('jansevaai_user') || '{}');
         const f = {};
         if (filter !== 'all') f.status = filter;
         if (categoryFilter !== 'all') f.category = categoryFilter;
@@ -37,7 +37,7 @@ const MyComplaints = () => {
             try {
                 const res = await deleteComplaint(id);
                 if (!res.success) {
-                    alert("Failed to delete complaint from server. Please try again.");
+                    console.error("Failed to delete complaint from server.");
                     // In a real app, we might refetch here
                 }
             } catch (err) {

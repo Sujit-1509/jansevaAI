@@ -40,7 +40,7 @@ const AdminWorkers = () => {
         
         setAdding(true);
         try {
-            const adminUser = JSON.parse(localStorage.getItem('civicai_user') || '{}');
+            const adminUser = JSON.parse(localStorage.getItem('jansevaai_user') || '{}');
             const data = {
                 ...newWorker,
                 added_by: adminUser.name || 'Admin'
