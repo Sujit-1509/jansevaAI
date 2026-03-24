@@ -2,6 +2,9 @@ import json
 import logging
 import os
 import time
+import base64
+import hmac
+import hashlib
 from datetime import datetime, timezone
 
 import boto3
@@ -12,6 +15,7 @@ logger.setLevel(logging.INFO)
 
 REGION = os.environ.get('REGION', 'ap-south-1')
 TABLE_NAME = os.environ.get('TABLE_NAME', 'Workers')
+SECRET_KEY = os.environ.get('JWT_SECRET', 'JanSevaAI-fallback-secret-key-12345').encode('utf-8')
 
 dynamodb = boto3.resource('dynamodb', region_name=REGION)
 
@@ -21,11 +25,47 @@ CORS_HEADERS = {
     "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
 }
 
+
+def verify_token(event):
+    """Verify the JWT token locally using HMAC SHA-256."""
+    auth = (event.get('headers') or {}).get('Authorization') or \
+           (event.get('headers') or {}).get('authorization', '')
+    token = auth.replace('Bearer ', '').strip()
+    if not token:
+        return None
+    try:
+        parts = token.split('.')
+        if len(parts) != 3:
+            return None
+        header, payload, sig = parts
+        expected = base64.urlsafe_b64encode(
+            hmac.new(SECRET_KEY, f"{header}.{payload}".encode(), hashlib.sha256).digest()
+        ).decode().rstrip('=')
+        if not hmac.compare_digest(sig, expected):
+            return None
+        pad = 4 - len(payload) % 4
+        if pad != 4:
+            payload += '=' * pad
+        decoded = json.loads(base64.urlsafe_b64decode(payload))
+        if decoded.get('exp', 0) < int(time.time()):
+            return None
+        return decoded
+    except Exception:
+        return None
+
+
 def lambda_handler(event, context):
     method = event.get('httpMethod', '') or event.get('requestContext', {}).get('http', {}).get('method', '')
     
     if method == "OPTIONS":
         return _response(200, "")
+
+    # Verify JWT — admin only
+    user = verify_token(event)
+    if not user:
+        return _response(401, {"error": "Unauthorized"})
+    if user.get('role') != 'admin':
+        return _response(403, {"error": "Admin only"})
 
     try:
         if method == "GET":

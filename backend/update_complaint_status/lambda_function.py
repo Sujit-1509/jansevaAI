@@ -146,14 +146,17 @@ def lambda_handler(event, context):
 
     table = dynamodb.Table(TABLE_NAME)
     try:
-        result = table.update_item(
-            Key={'incident_id': incident_id},
-            UpdateExpression='SET ' + ', '.join(update_parts),
-            ExpressionAttributeNames=expr_names if expr_names else None,
-            ExpressionAttributeValues=expr_vals,
-            ReturnValues='ALL_NEW',
-        )
-        # Strip None ExpressionAttributeNames if empty
+        update_kwargs = {
+            'Key': {'incident_id': incident_id},
+            'UpdateExpression': 'SET ' + ', '.join(update_parts),
+            'ExpressionAttributeValues': expr_vals,
+            'ReturnValues': 'ALL_NEW',
+        }
+        # Only include ExpressionAttributeNames when non-empty — passing None crashes DynamoDB
+        if expr_names:
+            update_kwargs['ExpressionAttributeNames'] = expr_names
+
+        result = table.update_item(**update_kwargs)
         updated = result.get('Attributes', {})
         logger.info('Updated complaint %s to %s by %s', incident_id, new_status, actor)
         return _resp(200, {
