@@ -11,7 +11,7 @@ const adminNav = [
   { to: '/dashboard', icon: <Home size={18} />, label: 'Dashboard' },
   { to: '/complaints', icon: <ClipboardList size={18} />, label: 'All Complaints' },
   { to: '/analytics', icon: <BarChart3 size={18} />, label: 'Analytics' },
-  { to: '/admin/workers', icon: <Users size={18} />, label: 'Workers' },
+  { to: '/worker', icon: <Users size={18} />, label: 'Workers' },
 ];
 const workerNav = [
   { to: '/worker', icon: <Home size={18} />, label: 'My Tasks' },

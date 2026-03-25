@@ -38,7 +38,7 @@ const Login = ({ onLogin }) => {
         setError(null);
         setLoading(true);
         try {
-            const res = await verifyOtp('+91' + phone, otp, selectedRole);
+            const res = await verifyOtp('+91' + phone, otp);
             if (res.success) {
                 // Token is stored in localStorage by the api.js verifyOtp function
                 const userData = { ...res.user, name, phone: '+91' + phone, role: selectedRole };

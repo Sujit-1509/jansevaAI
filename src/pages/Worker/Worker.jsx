@@ -1,425 +1,109 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, Clock, Camera, BarChart2, AlertTriangle, RefreshCw, X, MapPin } from 'lucide-react';
-import {
-    getComplaints,
-    workerRespondToTask,
-    resolveWithProof,
-    updateComplaintStatus,
-    getWorkerStats,
-} from '../../services/api';
+import { useState, useEffect } from 'react';
+import { MapPin, Navigation, CheckCircle, Loader2, Wrench } from 'lucide-react';
+import { getWorkerAssignments, updateComplaintStatus } from '../../services/api';
+import { StatusBadge, SeverityBadge, CategoryTag, PriorityBar, Loader, TimeAgo } from '../../components/Shared/Shared';
 import './Worker.css';
-
-function slaStatus(c) {
-    if (!c.sla_deadline) return null;
-    const ms = new Date(c.sla_deadline).getTime() - Date.now();
-    if (ms < 0) return { text: `${Math.round(-ms/3600000)}h overdue`, cls: 'sla-breach', urgent: true };
-    if (ms < 6*3600000) return { text: `${Math.round(ms/3600000)}h left`, cls: 'sla-warn', urgent: true };
-    const days = Math.floor(ms / 86400000);
-    const hrs  = Math.floor((ms % 86400000) / 3600000);
-    return { text: days > 0 ? `${days}d ${hrs}h` : `${hrs}h`, cls: 'sla-ok', urgent: false };
-}
-
-function StatusBadge({ status }) {
-    const map = { assigned: 'badge-info', in_progress: 'badge-warning', resolved: 'badge-success', submitted: 'badge-muted' };
-    return <span className={`badge ${map[status] || 'badge-muted'}`}>{status?.replace('_',' ')}</span>;
-}
-
-export default function Worker({ user }) {
-    const navigate    = useNavigate();
-    const workerPhone = user?.phone || '';
-
-    // ── Data ──────────────────────────────────────────────────────────────────
-    const [tasks,   setTasks]   = useState([]);
-    const [stats,   setStats]   = useState(null);
+const Worker = () => {
+    const [assignments, setAssignments] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [view,    setView]    = useState('tasks'); // 'tasks' | 'stats'
-
-    // ── Resolve with proof modal ──────────────────────────────────────────────
-    const [resolveModal, setResolveModal] = useState(null);
-    const [proofFile,    setProofFile]    = useState(null);
-    const [proofNote,    setProofNote]    = useState('');
-    const [resolveLoading, setResolveLoading] = useState(false);
-    const [resolveGps,   setResolveGps]   = useState(null); // { lat, lng } or null
-    const [gpsStatus,    setGpsStatus]    = useState(''); // 'fetching' | 'ok' | 'denied'
-    const fileRef = useRef(null);
-
-    // ── Toast ─────────────────────────────────────────────────────────────────
-    const [toast, setToast] = useState('');
-    const timerRef = useRef(null);
-    function showToast(msg) {
-        setToast(msg);
-        clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(() => setToast(''), 3000);
-    }
-
-    // ── Load ──────────────────────────────────────────────────────────────────
-    const load = useCallback(async () => {
-        setLoading(true);
-        try {
-            const [complRes, statsRes] = await Promise.all([
-                getComplaints(),
-                getWorkerStats(workerPhone),
-            ]);
-            const all   = complRes.complaints || [];
-            const mine  = workerPhone
-                ? all.filter(c => c.assigned_to === workerPhone)
-                : all.filter(c => ['assigned','in_progress'].includes(c.status));
-            // Sort: urgent SLA first, then by priority
-            mine.sort((a, b) => {
-                const aUrgent = a.sla_deadline && new Date(a.sla_deadline) < new Date() ? 1 : 0;
-                const bUrgent = b.sla_deadline && new Date(b.sla_deadline) < new Date() ? 1 : 0;
-                if (bUrgent !== aUrgent) return bUrgent - aUrgent;
-                return (b.priorityScore || 0) - (a.priorityScore || 0);
-            });
-            setTasks(mine);
-            setStats(statsRes);
-        } finally {
+    const [selected, setSelected] = useState(null);
+    const [updating, setUpdating] = useState(false);
+    const [notes, setNotes] = useState('');
+    const [newStatus, setNewStatus] = useState('');
+    useEffect(() => {
+        getWorkerAssignments().then((res) => {
+            setAssignments(res.assignments);
             setLoading(false);
-        }
-    }, [workerPhone]);
-
-    useEffect(() => { load(); }, [load]);
-
-    // ── Accept / reject ───────────────────────────────────────────────────────
-    async function handleRespond(task, action) {
-        try {
-            await workerRespondToTask(task.incident_id, action, '');
-            setTasks(prev => prev.map(t =>
-                t.incident_id === task.incident_id
-                    ? { ...t, status: action === 'accepted' ? 'in_progress' : 'submitted', worker_action: action }
-                    : t
-            ));
-            showToast(action === 'accepted' ? 'Task accepted — marked in progress' : 'Task rejected');
-        } catch {
-            showToast('Failed to respond to task');
-        }
-    }
-
-    // ── Resolve (simple, no photo) ────────────────────────────────────────────
-    async function handleSimpleResolve(task) {
-        try {
-            await updateComplaintStatus(task.incident_id, 'resolved', 'Resolved by worker');
-            setTasks(prev => prev.map(t =>
-                t.incident_id === task.incident_id ? { ...t, status: 'resolved' } : t
-            ));
-            showToast('Marked as resolved');
-        } catch {
-            showToast('Failed to resolve');
-        }
-    }
-
-    // ── Resolve with proof ────────────────────────────────────────────────────
-    async function handleResolveWithProof() {
-        if (!resolveModal) return;
-        setResolveLoading(true);
-        try {
-            if (proofFile) {
-                await resolveWithProof(resolveModal.incident_id, proofFile, proofNote || 'Resolved with photo proof', resolveGps);
-            } else {
-                await updateComplaintStatus(resolveModal.incident_id, 'resolved', proofNote || 'Resolved', resolveGps);
-            }
-            setTasks(prev => prev.map(t =>
-                t.incident_id === resolveModal.incident_id
-                    ? { ...t, status: 'resolved', resolution_proof_key: proofFile ? 'uploaded' : null }
-                    : t
-            ));
-            showToast(proofFile ? 'Resolved with photo proof uploaded' : 'Marked as resolved');
-            setResolveModal(null);
-            setProofFile(null);
-            setProofNote('');
-            setResolveGps(null);
-            setGpsStatus('');
-        } catch {
-            showToast('Failed to resolve');
-        } finally {
-            setResolveLoading(false);
-        }
-    }
-
-    const activeTasks   = tasks.filter(t => ['assigned','in_progress'].includes(t.status));
-    const resolvedTasks = tasks.filter(t => ['resolved','closed'].includes(t.status));
-
+        });
+    }, []);
+    const handleUpdate = async () => {
+        if (!newStatus) return;
+        setUpdating(true);
+        await updateComplaintStatus(selected.id, newStatus, notes);
+        setAssignments((prev) =>
+            prev.map((a) => (a.id === selected.id ? { ...a, status: newStatus } : a))
+        );
+        setSelected(null);
+        setNotes('');
+        setNewStatus('');
+        setUpdating(false);
+    };
+    if (loading) return <div className="worker-page"><Loader size="lg" text="Loading assignments..." /></div>;
     return (
         <div className="worker-page">
-
-            {/* ── Tab bar ───────────────────────────────────────────────────── */}
-            <div className="worker-tabs">
-                <button className={`worker-tab ${view === 'tasks' ? 'active' : ''}`} onClick={() => setView('tasks')}>
-                    My tasks
-                    {activeTasks.length > 0 && <span className="tab-badge">{activeTasks.length}</span>}
-                </button>
-                <button className={`worker-tab ${view === 'stats' ? 'active' : ''}`} onClick={() => setView('stats')}>
-                    My stats
-                </button>
-                <button className="worker-tab-refresh" onClick={load}>
-                    <RefreshCw size={14} />
-                </button>
-            </div>
-
-            {loading && <div className="worker-loading">Loading…</div>}
-
-            {/* ── TASKS VIEW ───────────────────────────────────────────────── */}
-            {!loading && view === 'tasks' && (
-                <div className="tasks-view">
-
-                    {activeTasks.length === 0 && (
-                        <div className="worker-empty">
-                            <CheckCircle size={32} style={{ opacity: .3 }} />
-                            <p>No active tasks assigned to you</p>
-                        </div>
-                    )}
-
-                    {activeTasks.map(task => {
-                        const sla      = slaStatus(task);
-                        const isNew    = task.status === 'assigned' && task.worker_action !== 'accepted';
-                        const inProg   = task.status === 'in_progress';
-
-                        return (
-                            <div key={task.incident_id} className={`task-card ${sla?.urgent ? 'task-urgent' : ''}`}>
-                                <div className="task-top">
-                                    <div className="task-meta">
-                                        <span className="task-id" onClick={() => navigate(`/complaint/${task.incident_id}`)}>
-                                            {task.incident_id?.slice(0, 12)}…
-                                        </span>
-                                        <span className="task-cat">{(task.category || 'unknown').replace('_',' ')}</span>
-                                        <StatusBadge status={task.status} />
-                                        {sla && (
-                                            <span className={`sla-tag ${sla.cls}`}>
-                                                <Clock size={11} style={{ verticalAlign: 'middle' }} />
-                                                {' '}{sla.text}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <span className={`sev-badge sev-${task.severity}`}>{task.severity}</span>
-                                </div>
-
-                                {task.description && (
-                                    <p className="task-desc">{task.description.slice(0, 160)}{task.description.length > 160 ? '…' : ''}</p>
-                                )}
-
-                                {task.address && (
-                                    <p className="task-addr">{task.address}</p>
-                                )}
-
-                                <div className="task-priority-row">
-                                    <span className="prio-label">Priority</span>
-                                    <div className="prio-bar-bg">
-                                        <div className="prio-bar-fill" style={{
-                                            width: `${task.priorityScore || 0}%`,
-                                            background: task.priorityScore > 70
-                                                ? 'var(--color-text-danger)'
-                                                : task.priorityScore > 40
-                                                    ? 'var(--color-text-warning)'
-                                                    : 'var(--color-text-info)',
-                                        }} />
-                                    </div>
-                                    <span className="prio-val">{task.priorityScore || 0}</span>
-                                </div>
-
-                                {/* Action buttons */}
-                                <div className="task-actions">
-                                    {isNew && (
-                                        <>
-                                            <button className="btn-accept" onClick={() => handleRespond(task, 'accepted')}>
-                                                <CheckCircle size={14} /> Accept
-                                            </button>
-                                            <button className="btn-reject" onClick={() => handleRespond(task, 'rejected')}>
-                                                <XCircle size={14} /> Reject
-                                            </button>
-                                        </>
-                                    )}
-                                    {inProg && (
-                                        <>
-                                            <button className="btn-resolve" onClick={() => handleSimpleResolve(task)}>
-                                                <CheckCircle size={14} /> Mark resolved
-                                            </button>
-                                            <button className="btn-proof" onClick={() => {
-                                                setResolveModal(task);
-                                                setProofFile(null);
-                                                setProofNote('');
-                                                setResolveGps(null);
-                                                setGpsStatus('fetching');
-                                                if (navigator.geolocation) {
-                                                    navigator.geolocation.getCurrentPosition(
-                                                        pos => { setResolveGps({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setGpsStatus('ok'); },
-                                                        () => setGpsStatus('denied'),
-                                                        { enableHighAccuracy: true, timeout: 8000 }
-                                                    );
-                                                } else {
-                                                    setGpsStatus('denied');
-                                                }
-                                            }}>
-                                                <Camera size={14} /> Resolve with photo
-                                            </button>
-                                        </>
-                                    )}
-                                    <button className="btn-detail" onClick={() => navigate(`/complaint/${task.incident_id}`)}>
-                                        View details
-                                    </button>
-                                </div>
-                            </div>
-                        );
-                    })}
-
-                    {/* Recently resolved */}
-                    {resolvedTasks.length > 0 && (
-                        <div className="resolved-section">
-                            <h4 className="section-title">Recently resolved ({resolvedTasks.length})</h4>
-                            {resolvedTasks.slice(0, 5).map(task => (
-                                <div key={task.incident_id} className="resolved-row" onClick={() => navigate(`/complaint/${task.incident_id}`)}>
-                                    <span className="task-id">{task.incident_id?.slice(0, 12)}…</span>
-                                    <span className="task-cat">{(task.category || '').replace('_',' ')}</span>
-                                    {task.resolution_proof_key && (
-                                        <span className="proof-tag"><Camera size={11} /> proof</span>
-                                    )}
-                                    <StatusBadge status={task.status} />
-                                </div>
-                            ))}
-                        </div>
-                    )}
+            <div className="container">
+                <div className="worker-header">
+                    <div>
+                        <h1 className="section-title">My Assignments</h1>
+                        <p className="text-muted text-sm">{assignments.length} active assignment(s)</p>
+                    </div>
                 </div>
-            )}
-
-            {/* ── STATS VIEW ───────────────────────────────────────────────── */}
-            {!loading && view === 'stats' && stats && (
-                <div className="stats-view">
-                    <div className="stats-grid">
-                        {[
-                            { label: 'Total assigned',  val: stats.total,    color: 'var(--color-text-primary)' },
-                            { label: 'Resolved',        val: stats.resolved, color: 'var(--color-text-success)' },
-                            { label: 'In progress',     val: stats.active,   color: 'var(--color-text-warning)' },
-                            { label: 'Pending accept',  val: stats.pending,  color: 'var(--color-text-info)' },
-                        ].map(s => (
-                            <div key={s.label} className="stat-card">
-                                <div className="stat-val" style={{ color: s.color }}>{s.val}</div>
-                                <div className="stat-label">{s.label}</div>
+                {!selected ? (
+                    <div className="worker-list">
+                        {assignments.map((a) => (
+                            <div key={a.id} className="worker-card card card-glow" onClick={() => setSelected(a)}>
+                                <div className="wc-top">
+                                    <div>
+                                        <code className="wc-id">{a.id}</code>
+                                        <StatusBadge status={a.status} />
+                                    </div>
+                                    <SeverityBadge severity={a.severity} />
+                                </div>
+                                <CategoryTag category={a.category} />
+                                <p className="wc-desc">{a.description}</p>
+                                <div className="wc-bottom">
+                                    <span className="wc-loc"><MapPin size={13} /> {a.address.split(',')[0]}</span>
+                                    <PriorityBar score={a.priorityScore} />
+                                </div>
+                                <div className="wc-actions">
+                                    <button className="btn btn-sm btn-secondary"><Navigation size={14} /> Navigate</button>
+                                    <button className="btn btn-sm btn-primary" onClick={(e) => { e.stopPropagation(); setSelected(a); }}>Update Status</button>
+                                </div>
                             </div>
                         ))}
                     </div>
-
-                    <div className="stats-details">
-                        <div className="detail-row">
-                            <span className="detail-label">Avg resolution time</span>
-                            <span className="detail-val">
-                                {stats.avgResolutionHours ? `${stats.avgResolutionHours}h` : 'N/A'}
-                            </span>
-                        </div>
-                        <div className="detail-row">
-                            <span className="detail-label">SLA compliance</span>
-                            <span className={`detail-val ${stats.slaComplianceRate >= 80 ? 'good' : 'low'}`}>
-                                {stats.slaComplianceRate}%
-                            </span>
-                        </div>
-                        <div className="detail-row">
-                            <span className="detail-label">Rejected tasks</span>
-                            <span className="detail-val">{stats.rejected}</span>
-                        </div>
-                    </div>
-
-                    {/* SLA compliance bar */}
-                    <div className="sla-bar-section">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                            <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>SLA compliance rate</span>
-                            <span style={{ fontSize: 13, fontWeight: 500 }}>{stats.slaComplianceRate}%</span>
-                        </div>
-                        <div className="sla-bar-bg">
-                            <div
-                                className="sla-bar-fill"
-                                style={{
-                                    width: `${stats.slaComplianceRate}%`,
-                                    background: stats.slaComplianceRate >= 80
-                                        ? 'var(--color-text-success)'
-                                        : stats.slaComplianceRate >= 50
-                                            ? 'var(--color-text-warning)'
-                                            : 'var(--color-text-danger)',
-                                }}
-                            />
-                        </div>
-                    </div>
-
-                    {stats.recentResolved.length > 0 && (
-                        <div className="recent-resolved">
-                            <h4 className="section-title">Recent resolutions</h4>
-                            {stats.recentResolved.map(c => (
-                                <div key={c.incident_id} className="resolved-row" onClick={() => navigate(`/complaint/${c.incident_id}`)}>
-                                    <span className="task-id">{c.incident_id?.slice(0, 12)}…</span>
-                                    <span className="task-cat">{(c.category || '').replace('_',' ')}</span>
-                                    <StatusBadge status={c.status} />
+                ) : (
+                    <div className="worker-detail animate-fade-in">
+                        <button className="btn btn-secondary btn-sm" onClick={() => setSelected(null)} style={{ marginBottom: 'var(--space-lg)' }}>
+                            Back to List
+                        </button>
+                        <div className="card">
+                            <div className="wc-top">
+                                <code className="wc-id">{selected.id}</code>
+                                <StatusBadge status={selected.status} />
+                            </div>
+                            <CategoryTag category={selected.category} />
+                            <p className="detail-desc" style={{ margin: 'var(--space-md) 0' }}>{selected.aiDescription || selected.description}</p>
+                            <div className="detail-location">
+                                <MapPin size={16} />
+                                <span>{selected.address}</span>
+                            </div>
+                            <div className="wc-update card" style={{ background: 'var(--bg-primary)' }}>
+                                <h3 style={{ marginBottom: 'var(--space-md)' }}>Update Status</h3>
+                                <div className="status-options">
+                                    {[
+                                        { value: 'in_progress', icon: <Wrench size={14} />, label: 'In Progress' },
+                                        { value: 'resolved', icon: <CheckCircle size={14} />, label: 'Resolved' },
+                                    ].map((s) => (
+                                        <label key={s.value} className={`status-radio ${newStatus === s.value ? 'active' : ''}`}>
+                                            <input type="radio" name="status" value={s.value} checked={newStatus === s.value} onChange={() => setNewStatus(s.value)} />
+                                            {s.icon} <span>{s.label}</span>
+                                        </label>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* ── Resolve with proof modal ──────────────────────────────────── */}
-            {resolveModal && (
-                <div className="modal-backdrop" onClick={() => setResolveModal(null)}>
-                    <div className="modal-box" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h3>Resolve with photo proof</h3>
-                            <button className="modal-close" onClick={() => setResolveModal(null)}><X size={16}/></button>
-                        </div>
-                        <p className="modal-sub">
-                            {resolveModal.incident_id?.slice(0,12)}… &middot; {resolveModal.category?.replace('_',' ')}
-                        </p>
-
-                        {/* Photo upload */}
-                        <div
-                            className={`photo-drop ${proofFile ? 'has-file' : ''}`}
-                            onClick={() => fileRef.current?.click()}
-                        >
-                            {proofFile
-                                ? <><Camera size={16} /> {proofFile.name}</>
-                                : <><Camera size={16} /> Tap to attach resolution photo (optional)</>
-                            }
-                        </div>
-                        <input
-                            ref={fileRef}
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            style={{ display: 'none' }}
-                            onChange={e => setProofFile(e.target.files[0] || null)}
-                        />
-
-                        <label className="form-label" style={{ marginTop: 12 }}>Resolution note</label>
-                        <textarea
-                            className="modal-textarea"
-                            rows={3}
-                            placeholder="Describe what was done, materials used, etc."
-                            value={proofNote}
-                            onChange={e => setProofNote(e.target.value)}
-                        />
-
-                        {/* GPS status indicator */}
-                        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem' }}>
-                            <MapPin size={14} />
-                            {gpsStatus === 'fetching' && <span style={{ color: 'var(--color-text-warning)' }}>Acquiring GPS…</span>}
-                            {gpsStatus === 'ok' && resolveGps && (
-                                <span style={{ color: 'var(--color-text-success)' }}>
-                                    GPS locked: {resolveGps.lat.toFixed(5)}, {resolveGps.lng.toFixed(5)}
-                                </span>
-                            )}
-                            {gpsStatus === 'denied' && <span style={{ color: 'var(--color-text-danger)' }}>GPS unavailable — resolve will proceed without location</span>}
-                        </div>
-
-                        <div className="modal-actions">
-                            <button className="btn-ghost" onClick={() => setResolveModal(null)}>Cancel</button>
-                            <button
-                                className="btn-accept"
-                                disabled={resolveLoading}
-                                onClick={handleResolveWithProof}
-                            >
-                                {resolveLoading ? 'Uploading…' : 'Submit & resolve'}
-                            </button>
+                                <div className="input-group">
+                                    <label>Notes</label>
+                                    <textarea className="input" placeholder="Add resolution notes..." value={notes} onChange={(e) => setNotes(e.target.value)} />
+                                </div>
+                                <button className="btn btn-success" style={{ marginTop: 'var(--space-md)', width: '100%' }} onClick={handleUpdate} disabled={!newStatus || updating}>
+                                    {updating ? <><Loader2 size={16} className="spin-icon" /> Updating...</> : <><CheckCircle size={16} /> Update Complaint</>}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-
-            {toast && <div className="toast">{toast}</div>}
+                )}
+            </div>
         </div>
     );
-}
+};
+export default Worker;

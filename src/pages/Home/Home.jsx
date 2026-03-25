@@ -40,7 +40,7 @@ const Home = () => {
                                 />
                                 Government of India Initiative
                             </div>
-                            <h1>JanSevaAI<br />Municipal Solutions</h1>
+                            <h1>Smart Municipal<br />Complaint System</h1>
                             <p className="hero-desc">
                                 Report civic issues in your city — potholes, garbage, broken streetlights, and more.
                                 Our AI-powered system automatically detects, categorizes, and routes complaints
