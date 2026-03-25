@@ -30,11 +30,11 @@ def generate_complaint_text(
         f"Generate a formal municipal complaint for:\n"
         f"Issue Type: {category}\n"
         f"Severity: {severity}\n"
-        f"Coordinates/URL: {location}\n"
         f"{addr_line}\n"
         f"Write a concise, professional complaint description in 3-4 sentences. "
         f"If an address is provided, reference the specific street or area naturally "
         f"in the text to make it specific to the location. "
+        f"IMPORTANT: DO NOT include any direct URLs, S3 keys, file names, or technical references in the description. "
         f"Return text only, no headers or formatting."
     )
 

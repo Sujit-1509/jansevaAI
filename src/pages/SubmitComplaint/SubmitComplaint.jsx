@@ -60,44 +60,21 @@ const SubmitComplaint = () => {
         <div className="submit-page">
             <div className="container">
                 <div className="submit-container">
-                    <div className="progress-bar">
+                    {/* ── Premium High-Contrast Stepper ── */}
+                    <div className="segmented-progress premium-stepper">
                         {STEPS.map((label, i) => (
-                            <div
-                                key={label}
-                                className={`progress-step ${i <= step ? 'active' : ''} ${i < step ? 'done' : ''}`}
-                            >
-                                <div className="progress-dot">
-                                    {i < step ? <CheckCircle size={16} /> : <span>{i + 1}</span>}
-                                </div>
-                                <span className="progress-label hide-mobile">{label}</span>
+                            <div key={label} className={`segment ${i === step ? 'active' : i < step ? 'done' : 'pending'}`}>
+                                <div className="segment-number">{i < step ? '✓' : i + 1}</div>
+                                <span className="segment-label hide-mobile">{label}</span>
                             </div>
                         ))}
-                        <div className="progress-line">
-                            <div className="progress-fill" style={{ width: `${(step / 4) * 100}%` }} />
-                        </div>
                     </div>
 
                     {error && (
-                        <div
-                            className="card"
-                            style={{
-                                background: 'var(--bg-danger, #fef2f2)',
-                                color: 'var(--color-text-danger, #dc2626)',
-                                border: '1px solid var(--border-danger, #fecaca)',
-                                padding: 'var(--space-sm) var(--space-md)',
-                                marginBottom: 'var(--space-md)',
-                                borderRadius: '8px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                            }}
-                        >
+                        <div className="error-banner" role="alert">
                             <X size={16} />
                             <span>{error}</span>
-                            <button
-                                onClick={() => setError(null)}
-                                style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--color-text-danger, #dc2626)', cursor: 'pointer' }}
-                            >
+                            <button onClick={() => setError(null)} className="error-dismiss-btn">
                                 Dismiss
                             </button>
                         </div>
@@ -108,12 +85,17 @@ const SubmitComplaint = () => {
                             <h2>
                                 Upload Photos
                                 {images.length > 0 && (
-                                    <span className="badge badge-info" style={{ marginLeft: '0.5rem', fontSize: '0.75rem' }}>
+                                    <span className="badge badge-info step-count-badge">
                                         {images.length} / 5
                                     </span>
                                 )}
                             </h2>
-                            <p className="text-muted">Take or upload up to 5 photos of the civic issue — AI will analyze them all</p>
+                            <p className="text-muted">Take or upload up to 5 photos — AI will analyze the primary photo while others serve as supporting evidence</p>
+                            <div className="upload-format-hints">
+                                <span className="upload-hint-pill">JPG / PNG / HEIC</span>
+                                <span className="upload-hint-pill">Max 10MB each</span>
+                                <span className="upload-hint-pill">Up to 5 photos</span>
+                            </div>
                             <button
                                 type="button"
                                 className={`upload-zone${dragging ? ' drag-over' : ''}`}
@@ -165,7 +147,7 @@ const SubmitComplaint = () => {
                                     <p className="font-medium">Location Detected</p>
                                     <p className="text-sm text-muted">{location.address}</p>
                                 </div>
-                                {location.latitude && <span className="text-sm status-text-success">GPS</span>}
+                                {location.latitude && <span className="location-status-pill">GPS Locked</span>}
                             </div>
                             <div className="step-actions">
                                 <Link to="/" className="btn btn-secondary">
@@ -186,7 +168,7 @@ const SubmitComplaint = () => {
                         <div className="step-content animate-fade-in">
                             <h2>Provide Details</h2>
                             <p className="text-muted">Briefly explain the issue in your own words</p>
-                            <div className="input-group" style={{ marginTop: 'var(--space-md)' }}>
+                            <div className="input-group details-input-group">
                                 <label htmlFor="complaint-note">Your View of the Complaint</label>
                                 <textarea
                                     id="complaint-note"
@@ -197,7 +179,7 @@ const SubmitComplaint = () => {
                                     rows="4"
                                 />
                             </div>
-                            <div className="step-actions" style={{ marginTop: 'var(--space-md)' }}>
+                            <div className="step-actions step-actions-compact">
                                 <button className="btn btn-secondary" onClick={() => setStep(0)}>
                                     <ArrowLeft size={16} /> Back
                                 </button>
@@ -215,7 +197,7 @@ const SubmitComplaint = () => {
                                 <Cpu size={28} className="ai-icon-svg" />
                             </div>
                             <h2>AI is Analyzing...</h2>
-                            <p className="text-muted">Our AI engine is analyzing {images.length} photo{images.length !== 1 ? 's' : ''} to detect the civic issue</p>
+                            <p className="text-muted">Our AI engine is aggressively analyzing the primary photo to detect the civic issue</p>
                             <div className="analysis-steps">
                                 <div className={`a-step ${analysisProgress ? 'done' : 'active'}`}>
                                     {analysisProgress ? <CheckCircle size={14} /> : <Loader2 size={14} className="spin-icon" />} Uploading image
@@ -302,7 +284,7 @@ const SubmitComplaint = () => {
                                     </ul>
                                 </div>
                             </div>
-                            <div className="input-group" style={{ marginTop: 'var(--space-md)' }}>
+                            <div className="input-group details-input-group">
                                 <label htmlFor="associated-notes">Your Associated Notes</label>
                                 <textarea
                                     id="associated-notes"
@@ -345,10 +327,9 @@ const SubmitComplaint = () => {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <strong className="conf-id">{result.complaintId}</strong>
                                         <button
-                                            className="btn btn-sm btn-secondary"
+                                            className="btn btn-sm btn-secondary copy-id-btn"
                                             onClick={() => navigator.clipboard.writeText(result.complaintId)}
                                             title="Copy ID"
-                                            style={{ padding: '2px 6px' }}
                                         >
                                             <Copy size={12} />
                                         </button>
@@ -363,10 +344,10 @@ const SubmitComplaint = () => {
                                     <span>{result.estimatedResolution}</span>
                                 </div>
                             </div>
-                            <p className="text-sm text-muted" style={{ marginTop: 'var(--space-md)' }}>
+                            <p className="text-sm text-muted confirmation-note">
                                 You will receive SMS and push notifications on status updates.
                             </p>
-                            <div className="step-actions" style={{ justifyContent: 'center' }}>
+                            <div className="step-actions step-actions-center">
                                 <Link to="/my-complaints" className="btn btn-primary">
                                     Track Complaint
                                 </Link>
