@@ -67,10 +67,15 @@ def lambda_handler(event, context):
     # Extract complaint id from path /complaints/{id}
     path = event.get('path', '') or event.get('rawPath', '')
     parts = [p for p in path.split('/') if p]
-    if len(parts) < 2 or parts[0] != 'complaints':
-        return _resp(400, {'error': 'Invalid path'})
     
-    incident_id = parts[1]
+    if not parts:
+        return _resp(400, {'error': 'Empty path'})
+        
+    # More robust: incident_id is the last part if it's NOT 'complaints'
+    incident_id = parts[-1]
+    
+    if incident_id == 'complaints' or len(parts) < 1:
+        return _resp(400, {'error': 'Missing incident_id in path'})
 
     table = dynamodb.Table(TABLE_NAME)
 
