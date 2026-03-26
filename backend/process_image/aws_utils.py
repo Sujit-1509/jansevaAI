@@ -17,4 +17,6 @@ dynamodb_resource = boto3.resource("dynamodb", region_name=REGION)
 
 ses_client = boto3.client("ses", region_name=REGION)
 
+sns_client = boto3.client("sns", region_name=REGION)
+
 bedrock_client = boto3.client("bedrock-runtime", region_name=REGION)

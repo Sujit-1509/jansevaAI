@@ -6,6 +6,8 @@ import {
     normalizeStatus,
 } from './complaintModel';
 
+const ENABLE_MOCK_FALLBACK = import.meta.env.VITE_ENABLE_MOCK_FALLBACK === 'true';
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 export async function login(phone) {
@@ -37,7 +39,8 @@ export async function getWorkers() {
         return await api.get('/workers');
     } catch (err) {
         console.error('API Error in getWorkers:', err.message);
-        return { success: false, workers: [] };
+        if (ENABLE_MOCK_FALLBACK) return { success: true, workers: [] };
+        throw err;
     }
 }
 
@@ -75,6 +78,10 @@ export async function getComplaints(filters = {}) {
             },
         };
     } catch (err) {
+        if (!ENABLE_MOCK_FALLBACK) {
+            console.error('API Error in getComplaints:', err.message);
+            throw err;
+        }
         console.warn('API unreachable, using mock complaints:', err.message);
         let results = normalizeComplaintList(mockComplaints);
         if (filters.status) results = results.filter(c => c.status === normalizeStatus(filters.status));
@@ -100,6 +107,10 @@ export async function getComplaintById(id) {
         const res = await api.get(`/complaints/${id}`);
         return { success: true, complaint: normalizeComplaint(res.complaint || res) };
     } catch (err) {
+        if (!ENABLE_MOCK_FALLBACK) {
+            console.error('API Error in getComplaintById:', err.message);
+            throw err;
+        }
         console.warn('API unreachable, using mock complaint:', err.message);
         const complaint = normalizeComplaintList(mockComplaints).find(c => c.incident_id === id);
         if (!complaint) return { success: false, error: 'Complaint not found' };
@@ -112,6 +123,7 @@ export async function getNearbyComplaints(lat, lng, radius = 500) {
         const res = await api.get('/complaints/nearby', { lat, lng, radius });
         return { ...res, complaints: normalizeComplaintList(res.complaints || []) };
     } catch (err) {
+        if (!ENABLE_MOCK_FALLBACK) throw err;
         console.warn('API unreachable, using mock nearby complaints:', err.message);
         return { success: true, complaints: normalizeComplaintList(mockComplaints.slice(0, 5)), total: 5 };
     }
@@ -121,6 +133,7 @@ export async function upvoteComplaint(id) {
     try {
         return await api.post(`/complaints/${id}/upvote`);
     } catch (err) {
+        if (!ENABLE_MOCK_FALLBACK) throw err;
         console.warn('API unreachable, using mock upvote:', err.message);
         return { success: true, upvotes: 24, newPriorityScore: 86 };
     }
@@ -130,6 +143,7 @@ export async function deleteComplaint(id) {
     try {
         return await api.delete(`/complaints/${id}`);
     } catch (err) {
+        if (!ENABLE_MOCK_FALLBACK) throw err;
         console.warn('API unreachable, using mock delete:', err.message);
         return { success: true };
     }
@@ -175,6 +189,10 @@ export async function updateComplaintStatus(id, status, notes, resolveLocation =
             updatedRecord: res.updatedRecord ? normalizeComplaint(res.updatedRecord) : null,
         };
     } catch (err) {
+        if (!ENABLE_MOCK_FALLBACK) {
+            console.error('API Error in updateComplaintStatus:', err.message);
+            throw err;
+        }
         const safeStatus = normalizeStatus(status);
         console.warn('API unreachable, using mock status update:', err.message);
         return {
@@ -230,6 +248,7 @@ export async function workerRespondToTask(incidentId, action, note = '') {
             notes:        note,
         });
     } catch (err) {
+        if (!ENABLE_MOCK_FALLBACK) throw err;
         console.warn('Worker respond API unreachable, mock response:', err.message);
         return { success: true, incident_id: incidentId, status: newStatus };
     }
@@ -295,7 +314,8 @@ export async function getSlaBreaches() {
         return { success: true, breached, warning, total: complaints.length };
     } catch (err) {
         console.warn('SLA data failed:', err.message);
-        return { success: true, breached: [], warning: [], total: 0 };
+        if (ENABLE_MOCK_FALLBACK) return { success: true, breached: [], warning: [], total: 0 };
+        throw err;
     }
 }
 
@@ -346,11 +366,14 @@ export async function getWorkerStats(workerPhone) {
         };
     } catch (err) {
         console.warn('Worker stats failed:', err.message);
-        return {
-            success: true, total: 0, resolved: 0, active: 0,
-            pending: 0, rejected: 0, avgResolutionHours: null, slaComplianceRate: 100,
-            recentResolved: [],
-        };
+        if (ENABLE_MOCK_FALLBACK) {
+            return {
+                success: true, total: 0, resolved: 0, active: 0,
+                pending: 0, rejected: 0, avgResolutionHours: null, slaComplianceRate: 100,
+                recentResolved: [],
+            };
+        }
+        throw err;
     }
 }
 
@@ -399,8 +422,11 @@ export async function analyzeImages(imageFiles, onProgress) {
 
         return _buildAnalysisResult(result, s3Keys, incidentId);
     } catch (err) {
-        console.warn('Multi-image analysis failed, using mock:', err.message);
-        return _mockAnalysisResult();
+        if (ENABLE_MOCK_FALLBACK) {
+            console.warn('Multi-image analysis failed, using mock:', err.message);
+            return _mockAnalysisResult();
+        }
+        throw err;
     }
 }
 
@@ -413,8 +439,11 @@ export async function analyzeImage(imageFile) {
         if (!result) throw new Error('Processing timed out');
         return _buildAnalysisResult(result, [presign.s3_key], presign.incident_id);
     } catch (err) {
-        console.warn('Image analysis API failed, using mock:', err.message);
-        return _mockAnalysisResult();
+        if (ENABLE_MOCK_FALLBACK) {
+            console.warn('Image analysis API failed, using mock:', err.message);
+            return _mockAnalysisResult();
+        }
+        throw err;
     }
 }
 
@@ -612,9 +641,13 @@ function computeStats(complaints) {
 
 export async function getWorkerAssignments() {
     try {
-        const res = await api.get('/worker/assignments');
-        return { ...res, assignments: normalizeComplaintList(res.assignments || []) };
+        const res = await getComplaints();
+        const assignments = (res.complaints || []).filter(
+            c => c.status === 'assigned' || c.status === 'in_progress'
+        );
+        return { success: true, assignments };
     } catch (err) {
+        if (!ENABLE_MOCK_FALLBACK) throw err;
         console.warn('API unreachable, using mock worker assignments:', err.message);
         const assignments = normalizeComplaintList(mockComplaints).filter(
             c => c.status === 'assigned' || c.status === 'in_progress'

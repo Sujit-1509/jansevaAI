@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ClipboardList, ThumbsUp, MapPin } from 'lucide-react';
-import { getComplaints } from '../../services/api';
+import { ClipboardList, ThumbsUp, MapPin, Trash2 } from 'lucide-react';
+import { getComplaints, deleteComplaint } from '../../services/api';
 import { StatusBadge, SeverityBadge, CategoryTag, TimeAgo, Loader, EmptyState, PriorityBar } from '../../components/Shared/Shared';
 import './MyComplaints.css';
 const MyComplaints = () => {
@@ -21,10 +21,31 @@ const MyComplaints = () => {
         }
         setLoading(true);
         getComplaints(f).then((res) => {
-            setComplaints(res.complaints || []);
+            const arr = res.complaints || [];
+            arr.sort((a, b) => new Date(b.timestamp || b.createdAt || 0) - new Date(a.timestamp || a.createdAt || 0));
+            setComplaints(arr);
             setLoading(false);
         });
     }, [filter, categoryFilter]);
+
+    const handleDelete = async (e, id) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.confirm("Are you sure you want to delete this complaint? This cannot be undone.")) {
+            // Optimistic update
+            setComplaints(prev => prev.filter(c => c.incident_id !== id));
+            try {
+                const res = await deleteComplaint(id);
+                if (!res.success) {
+                    console.error("Failed to delete complaint from server.");
+                    // In a real app, we might refetch here
+                }
+            } catch (err) {
+                console.error('Delete failed:', err);
+            }
+        }
+    };
+
     return (
         <div className="my-complaints-page">
             <div className="container">
@@ -72,7 +93,16 @@ const MyComplaints = () => {
                         {complaints.map((c) => (
                             <Link key={c.incident_id} to={`/complaint/${c.incident_id}`} className="mc-card card card-glow">
                                 <div className="mc-card-top">
-                                    <code className="mc-id">{c.incident_id}</code>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <code className="mc-id">{c.incident_id}</code>
+                                        <button 
+                                            onClick={(e) => handleDelete(e, c.incident_id)}
+                                            style={{ padding: '4px', background: 'transparent', border: 'none', cursor: 'pointer', zIndex: 10 }}
+                                            title="Delete Complaint"
+                                        >
+                                            <Trash2 size={16} color="var(--danger)" />
+                                        </button>
+                                    </div>
                                     <StatusBadge status={c.status} />
                                 </div>
                                 <div className="mc-card-body">

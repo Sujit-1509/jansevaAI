@@ -3,8 +3,8 @@ import logging
 import urllib.parse
 from datetime import datetime, timezone
 
-from config import TABLE_NAME, SES_SOURCE_EMAIL
-from aws_utils import dynamodb_resource, ses_client
+from config import TABLE_NAME, SES_SOURCE_EMAIL, SMS_NOTIFICATIONS_ENABLED
+from aws_utils import dynamodb_resource, ses_client, sns_client
 from inference_client import call_yolo
 from vision_fallback import classify_with_nova
 from severity_rules import calculate_severity
@@ -26,6 +26,10 @@ def save_to_dynamodb(item: dict) -> None:
 
 
 def send_email_notification(incident_id, department, category, severity, complaint_text):
+    if not SES_SOURCE_EMAIL:
+        logger.info("SES_SOURCE_EMAIL is not configured; skipping email notification for %s", incident_id)
+        return
+
     subject = f"New Civic Complaint - {incident_id}"
 
     body = (
@@ -50,6 +54,49 @@ def send_email_notification(incident_id, department, category, severity, complai
         logger.info("Email notification sent for %s", incident_id)
     except Exception as exc:
         logger.error("SES send_email failed for %s: %s", incident_id, str(exc))
+
+
+def normalize_phone_number(raw_phone: str) -> str | None:
+    if not raw_phone:
+        return None
+
+    cleaned = "".join(ch for ch in str(raw_phone) if ch.isdigit() or ch == "+")
+    if cleaned.startswith("+"):
+        return cleaned
+
+    digits = "".join(ch for ch in cleaned if ch.isdigit())
+    if len(digits) == 10:
+        return f"+91{digits}"
+    if len(digits) == 12 and digits.startswith("91"):
+        return f"+{digits}"
+    return None
+
+
+def send_sms_notification(incident_id, department, category, severity, complaint_text, user_phone):
+    if not SMS_NOTIFICATIONS_ENABLED:
+        logger.info("SMS notifications disabled; skipping SMS for %s", incident_id)
+        return
+
+    phone_number = normalize_phone_number(user_phone)
+    if not phone_number:
+        logger.info("No valid phone number available; skipping SMS for %s", incident_id)
+        return
+
+    message = (
+        f"JanSevaAI Update\n"
+        f"Complaint ID: {incident_id}\n"
+        f"Category: {category}\n"
+        f"Severity: {severity}\n"
+        f"Dept: {department}\n"
+        f"Status: submitted\n"
+        f"Details: {complaint_text[:240]}"
+    )
+
+    try:
+        sns_client.publish(PhoneNumber=phone_number, Message=message)
+        logger.info("SMS notification sent for %s to %s", incident_id, phone_number)
+    except Exception as exc:
+        logger.error("SNS publish failed for %s: %s", incident_id, str(exc))
 
 
 def lambda_handler(event, context):
@@ -169,6 +216,15 @@ def lambda_handler(event, context):
         category=category,
         severity=severity,
         complaint_text=complaint_text,
+    )
+
+    send_sms_notification(
+        incident_id=incident_id,
+        department=department,
+        category=category,
+        severity=severity,
+        complaint_text=complaint_text,
+        user_phone=existing.get("user_phone"),
     )
 
     # 8. return result

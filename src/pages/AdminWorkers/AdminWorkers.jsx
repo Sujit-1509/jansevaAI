@@ -1,227 +1,214 @@
 import { useState, useEffect } from 'react';
-import { 
-    Users, 
-    Plus, 
-    Trash2, 
-    Search, 
-    Loader2, 
-    ShieldAlert, 
-    Phone, 
-    Building, 
-    RefreshCw, 
-    CheckCircle, 
-    X 
-} from 'lucide-react';
+import { Plus, Trash2, Search, UserPlus, ShieldAlert, Loader2, Phone, User, Briefcase, Building2 } from 'lucide-react';
 import { getWorkers, addWorker, removeWorker } from '../../services/api';
 import './AdminWorkers.css';
 
 const AdminWorkers = () => {
     const [workers, setWorkers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [adding, setAdding] = useState(false);
+    const [search, setSearch] = useState('');
+    
     const [showAddModal, setShowAddModal] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
     const [newWorker, setNewWorker] = useState({ name: '', phone: '', department: 'PWD' });
-    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+    const [adding, setAdding] = useState(false);
+    
+    const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
 
     useEffect(() => {
         fetchWorkers();
     }, []);
 
-    const fetchWorkers = async () => {
-        setLoading(true);
-        try {
-            const res = await getWorkers();
-            setWorkers(res.workers || []);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
+    const showToast = (message, type = 'info') => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast({ show: false, message: '', type: 'info' }), 3000);
     };
 
-    const showToast = (message, type = 'success') => {
-        setToast({ show: true, message, type });
-        setTimeout(() => setToast({ ...toast, show: false }), 3000);
+    const fetchWorkers = async () => {
+        setLoading(true);
+        const res = await getWorkers();
+        if (res.success) {
+            setWorkers(res.workers || []);
+        } else {
+            showToast('Failed to load workers', 'error');
+        }
+        setLoading(false);
     };
 
     const handleAddWorker = async (e) => {
         e.preventDefault();
-        if (!newWorker.name || newWorker.phone.length < 10) {
-            showToast('Please provide a valid name and 10-digit phone', 'error');
-            return;
-        }
+        if (!newWorker.name || !newWorker.phone) return;
+        
         setAdding(true);
         try {
-            const res = await addWorker(newWorker);
+            const adminUser = JSON.parse(localStorage.getItem('jansevaai_user') || '{}');
+            const data = {
+                ...newWorker,
+                added_by: adminUser.name || 'Admin'
+            };
+            const res = await addWorker(data);
             if (res.success) {
-                showToast('Worker registered successfully!');
+                showToast('Worker added successfully', 'success');
                 setShowAddModal(false);
                 setNewWorker({ name: '', phone: '', department: 'PWD' });
-                fetchWorkers();
+                fetchWorkers(); // reload list
             } else {
-                showToast(res.message || 'Error adding worker', 'error');
+                showToast(res.error || 'Failed to add worker', 'error');
             }
         } catch (err) {
-            showToast('Failed to connect to server', 'error');
+            showToast('Error adding worker', 'error');
         } finally {
             setAdding(false);
         }
     };
 
     const handleDeleteWorker = async (phone, name) => {
-        if (!window.confirm(`Are you sure you want to remove ${name}?`)) return;
+        if (!window.confirm(`Are you sure you want to remove ${name}? They will lose access.`)) return;
+        
         try {
             const res = await removeWorker(phone);
             if (res.success) {
-                showToast(`Worker ${name} removed`);
-                fetchWorkers();
+                showToast('Worker removed', 'success');
+                setWorkers(prev => prev.filter(w => w.phone !== phone));
+            } else {
+                showToast(res.error || 'Failed to remove worker', 'error');
             }
         } catch (err) {
-            showToast('Failed to remove worker', 'error');
+            showToast('Error removing worker', 'error');
         }
     };
 
     const filteredWorkers = workers.filter(w => 
-        w.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        w.phone.includes(searchQuery) ||
-        w.department.toLowerCase().includes(searchQuery.toLowerCase())
+        w.name?.toLowerCase().includes(search.toLowerCase()) || 
+        w.phone?.includes(search) ||
+        w.department?.toLowerCase().includes(search.toLowerCase())
     );
 
-    const departmentsCount = new Set(workers.map(w => w.department)).size;
-
     return (
-        <div className="admin-workers-page">
-            <div className="container">
-                <div className="aw-header">
-                    <div>
-                        <h1 className="section-title">Field Worker Management</h1>
-                        <p className="text-muted text-sm">Register and manage municipal field staff</p>
-                    </div>
-                    <div className="aw-actions">
-                        <button className="btn btn-secondary btn-sm" onClick={fetchWorkers} disabled={loading}>
-                            <RefreshCw size={14} className={loading ? 'spin-anim' : ''} /> Refresh
-                        </button>
-                        <button className="btn btn-primary btn-sm" onClick={() => setShowAddModal(true)}>
-                            <Plus size={14} /> Add Worker
-                        </button>
-                    </div>
+        <div className="admin-workers animate-fade-in">
+            <div className="page-header">
+                <div>
+                    <h1>Worker Management</h1>
+                    <p className="text-muted">Manage field workers and permissions</p>
                 </div>
+                <button className="btn btn-primary premium-btn" onClick={() => setShowAddModal(true)}>
+                    <UserPlus size={18} /> Add Worker
+                </button>
+            </div>
 
-                <div className="stats-mini-grid">
-                    <div className="mini-stat-card">
-                        <div className="mstat-val">{workers.length}</div>
-                        <div className="mstat-label">Total Workers</div>
-                    </div>
-                    <div className="mini-stat-card">
-                        <div className="mstat-val">{departmentsCount}</div>
-                        <div className="mstat-label">Active Departments</div>
-                    </div>
-                </div>
-
-                <div className="aw-toolbar card">
-                    <div className="aw-search">
-                        <Search size={16} />
-                        <input 
-                            type="text" 
-                            placeholder="Search by name, phone or department..." 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+            <div className="workers-glass-panel">
+                <div className="filters-bar">
+                    <div className="search-box">
+                        <Search size={18} className="text-muted" />
+                        <input
+                            type="text"
+                            placeholder="Search by name, phone, or department..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <div className="aw-results-count">
-                        {filteredWorkers.length} workers found
+                </div>
+
+                <div className="worker-stats-mini mb-2" style={{ marginTop: '16px', padding: '0 20px' }}>
+                    <div className="wstat">
+                        <span className="wstat-val">{workers.length}</span>
+                        <span className="wstat-lbl">Active Workers</span>
+                    </div>
+                    <div className="wstat">
+                        <span className="wstat-val">{new Set(workers.map(w => w.department)).size}</span>
+                        <span className="wstat-lbl">Departments</span>
                     </div>
                 </div>
 
-                <div className="card aw-table-card">
-                    {loading ? (
-                        <div style={{ padding: '60px', textAlign: 'center' }}>
-                            <Loader2 size={32} className="spin-anim text-muted" />
-                            <p style={{ marginTop: '12px' }}>Gathering worker registry...</p>
-                        </div>
-                    ) : (
-                        <div className="table-overflow">
-                            <table className="aw-table">
-                                <thead>
-                                    <tr>
-                                        <th>Worker Information</th>
-                                        <th>Department</th>
-                                        <th>Joined On</th>
-                                        <th className="text-right">Actions</th>
+                <div className="workers-table-wrapper">
+                    <table className="workers-table">
+                        <thead>
+                            <tr>
+                                <th>Worker Info</th>
+                                <th>Department</th>
+                                <th>Added Date</th>
+                                <th>Status</th>
+                                <th className="text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr>
+                                    <td colSpan="5" className="text-center py-5">
+                                        <Loader2 size={24} className="spin-icon mx-auto text-muted" />
+                                        <p className="mt-2 text-muted">Loading workers...</p>
+                                    </td>
+                                </tr>
+                            ) : filteredWorkers.length > 0 ? (
+                                filteredWorkers.map((worker) => (
+                                    <tr key={worker.phone} className="worker-row">
+                                        <td>
+                                            <div className="worker-name-cell">
+                                                <div className="worker-avatar">{worker.name.charAt(0)}</div>
+                                                <div>
+                                                    <div className="worker-name">{worker.name}</div>
+                                                    <div className="worker-phone">{worker.phone}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><span className="dept-pill badge" style={{background: 'var(--info-bg)', color: 'var(--info)', border: '1px solid var(--info-border)'}}>{worker.department}</span></td>
+                                        <td className="text-muted text-sm">
+                                            {worker.created_at ? new Date(worker.created_at).toLocaleDateString() : 'N/A'}
+                                        </td>
+                                        <td><span className="status-dot active">Active</span></td>
+                                        <td className="text-right">
+                                            <div className="action-cell" style={{justifyContent: 'flex-end'}}>
+                                                <button 
+                                                    className="btn btn-icon danger" 
+                                                    onClick={() => handleDeleteWorker(worker.phone, worker.name)}
+                                                    title="Remove Worker"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredWorkers.length > 0 ? (
-                                        filteredWorkers.map(w => (
-                                            <tr key={w.phone} className="worker-row">
-                                                <td>
-                                                    <div className="worker-info-cell">
-                                                        <div className="worker-avatar">{w.name.charAt(0)}</div>
-                                                        <div>
-                                                            <div className="worker-name">{w.name}</div>
-                                                            <div className="worker-phone"><Phone size={10} /> {w.phone}</div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span className="dept-tag">
-                                                        <Building size={11} /> {w.department}
-                                                    </span>
-                                                </td>
-                                                <td className="text-sm text-muted">
-                                                    {w.created_at ? new Date(w.created_at).toLocaleDateString() : '—'}
-                                                </td>
-                                                <td className="text-right">
-                                                    <button className="btn-delete" onClick={() => handleDeleteWorker(w.phone, w.name)}>
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="4" style={{ padding: '40px', textAlign: 'center' }}>
-                                                <ShieldAlert size={32} className="text-muted" style={{ opacity: 0.3, marginBottom: '8px' }} />
-                                                <p className="text-muted">No field workers found.</p>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="5" className="text-center py-5">
+                                        <ShieldAlert size={32} className="text-muted mx-auto mb-2 opacity-50" />
+                                        <p className="text-muted">No workers found.</p>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            {/* Add Modal */}
+            {/* Add Worker Modal */}
             {showAddModal && (
-                <div className="worker-modal-overlay" onClick={() => setShowAddModal(false)}>
-                    <div className="worker-modal-box" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h3>Register New Worker</h3>
-                            <button className="close-btn" onClick={() => setShowAddModal(false)}><X size={18} /></button>
+                <div className="worker-modal-overlay">
+                    <div className="worker-modal">
+                        <div className="modal-header" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                            <h2>Register New Worker</h2>
+                            <button className="btn btn-icon" onClick={() => setShowAddModal(false)}>&times;</button>
                         </div>
-                        <form onSubmit={handleAddWorker} className="modal-form">
-                            <div className="form-group">
-                                <label>Full Name</label>
-                                <input 
-                                    type="text" 
-                                    placeholder="e.g. Rajesh Kumar"
-                                    value={newWorker.name}
-                                    onChange={e => setNewWorker({...newWorker, name: e.target.value})}
-                                    required
-                                />
-                            </div>
-                            <div className="form-row">
+                        <form onSubmit={handleAddWorker} className="modal-body">
+                            <div className="form-grid">
+                                <div className="form-group form-grid-full">
+                                    <label>Full Name</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Ramesh Singh"
+                                        value={newWorker.name}
+                                        onChange={(e) => setNewWorker({ ...newWorker, name: e.target.value })}
+                                        required
+                                    />
+                                </div>
                                 <div className="form-group">
-                                    <label>Mobile Number</label>
-                                    <input 
-                                        type="tel" 
-                                        placeholder="10-digit number"
-                                        maxLength={10}
+                                    <label>Phone Number</label>
+                                    <input
+                                        type="tel"
+                                        placeholder="9876543210"
+                                        pattern="[0-9]{10}"
                                         value={newWorker.phone}
-                                        onChange={e => setNewWorker({...newWorker, phone: e.target.value.replace(/\D/g, '')})}
+                                        onChange={(e) => setNewWorker({ ...newWorker, phone: e.target.value.replace(/\D/g, '') })}
                                         required
                                     />
                                 </div>
@@ -229,21 +216,21 @@ const AdminWorkers = () => {
                                     <label>Department</label>
                                     <select 
                                         value={newWorker.department}
-                                        onChange={e => setNewWorker({...newWorker, department: e.target.value})}
+                                        onChange={(e) => setNewWorker({ ...newWorker, department: e.target.value })}
                                     >
-                                        <option value="PWD">PWD (Roads)</option>
-                                        <option value="Sanitation">Sanitation</option>
-                                        <option value="Water Supply">Water Supply</option>
-                                        <option value="Electricity">Electricity</option>
-                                        <option value="Parks">Parks & Gardens</option>
+                                        <option value="PWD">PWD (Roads & Infrastructure)</option>
+                                        <option value="Sanitation">Sanitation (Waste Management)</option>
+                                        <option value="Water Supply">Water Supply Board</option>
+                                        <option value="Electricity">Electricity Board</option>
+                                        <option value="Parks & Rec">Parks & Recreation</option>
                                     </select>
                                 </div>
                             </div>
-                            <div className="modal-actions">
+                            <div className="modal-footer">
                                 <button type="button" className="btn btn-ghost" onClick={() => setShowAddModal(false)}>Cancel</button>
                                 <button type="submit" className="btn btn-primary" disabled={adding}>
-                                    {adding ? <Loader2 size={14} className="spin-anim" /> : <Plus size={14} />} 
-                                    {adding ? 'Registering...' : 'Add Worker'}
+                                    {adding ? <Loader2 size={16} className="spin-icon" /> : <Plus size={16} />} 
+                                    {adding ? 'Adding...' : 'Register Worker'}
                                 </button>
                             </div>
                         </form>
@@ -251,12 +238,7 @@ const AdminWorkers = () => {
                 </div>
             )}
 
-            {toast.show && (
-                <div className={`aw-toast ${toast.type}`}>
-                    {toast.type === 'success' ? <CheckCircle size={16} /> : <ShieldAlert size={16} />}
-                    {toast.message}
-                </div>
-            )}
+            {toast.show && <div className={`toast toast-${toast.type}`}>{toast.message}</div>}
         </div>
     );
 };

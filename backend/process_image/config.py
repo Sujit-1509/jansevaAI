@@ -24,7 +24,15 @@ EC2_ENDPOINT: str = os.environ.get("EC2_ENDPOINT", "http://localhost:8000/predic
 MODEL_ID: str = os.environ.get("MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
 
 # ── Amazon SES ───────────────────────────────────────────────────────────────
-SES_SOURCE_EMAIL: str = os.environ.get("SES_SOURCE_EMAIL", "no-reply@JanSevaAI.com")
+SES_SOURCE_EMAIL: str = os.environ.get("SES_SOURCE_EMAIL", "").strip()
+
+# ── Amazon SNS (SMS) ────────────────────────────────────────────────────────
+SMS_NOTIFICATIONS_ENABLED: bool = os.environ.get("SMS_NOTIFICATIONS_ENABLED", "true").lower() in (
+	"1",
+	"true",
+	"yes",
+)
 
 # ── Timeouts (seconds) ──────────────────────────────────────────────────────
-YOLO_TIMEOUT: int = int(os.environ.get("YOLO_TIMEOUT", "10"))
+# Default increased to 25s to better tolerate cold starts/network jitter.
+YOLO_TIMEOUT: int = int(os.environ.get("YOLO_TIMEOUT", "25"))
