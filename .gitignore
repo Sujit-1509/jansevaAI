@@ -46,6 +46,9 @@ __pycache__/
 
 # Misc
 .gemini/
+.agent/
+.gsd/
+adapters/
 
 # Temporary UI migration files
 civicai-ui-redesign-extracted/
