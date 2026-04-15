@@ -29,7 +29,13 @@ function isComplaintForWorker(complaint, workerPhone) {
         complaint.workerPhone,
     ];
 
-    return candidatePhones.some((phone) => normalizePhone(phone) === workerNorm);
+    const currentAssignmentMatch = candidatePhones.some((phone) => normalizePhone(phone) === workerNorm);
+    if (currentAssignmentMatch) return true;
+
+    const history = Array.isArray(complaint.status_history) ? complaint.status_history : [];
+    const historyActorMatch = history.some((entry) => normalizePhone(entry?.actor) === workerNorm);
+
+    return historyActorMatch;
 }
 
 function slaStatus(c) {
@@ -173,8 +179,8 @@ export default function Worker({ user }) {
         }
     }
 
-    const activeTasks   = tasks.filter(t => ['assigned','in_progress'].includes(t.status));
-    const resolvedTasks = tasks.filter(t => ['resolved','closed'].includes(t.status));
+    const activeTasks = tasks.filter(t => ['assigned','in_progress'].includes(t.status));
+    const allReceivedTasks = tasks;
 
     return (
         <div className="worker-page">
@@ -210,6 +216,7 @@ export default function Worker({ user }) {
                         const sla      = slaStatus(task);
                         const isNew    = task.status === 'assigned' && task.worker_action !== 'accepted';
                         const inProg   = task.status === 'in_progress';
+                        const hasGps   = !!(task.latitude || task.longitude);
 
                         return (
                             <div key={task.incident_id} className={`task-card ${sla?.urgent ? 'task-urgent' : ''}`}>
@@ -253,6 +260,13 @@ export default function Worker({ user }) {
                                     <span className="prio-val">{task.priorityScore || 0}</span>
                                 </div>
 
+                                {/* Anti-Corruption: GPS tasks require on-site photo proof */}
+                                {hasGps && inProg && (
+                                    <div className="geofence-notice">
+                                        <MapPin size={12} /> On-site verification required
+                                    </div>
+                                )}
+
                                 {/* Action buttons */}
                                 <div className="task-actions">
                                     {isNew && (
@@ -267,9 +281,12 @@ export default function Worker({ user }) {
                                     )}
                                     {inProg && (
                                         <>
-                                            <button className="btn-resolve" onClick={() => handleSimpleResolve(task)}>
-                                                <CheckCircle size={14} /> Mark resolved
-                                            </button>
+                                            {/* Simple resolve only for tasks without GPS */}
+                                            {!hasGps && (
+                                                <button className="btn-resolve" onClick={() => handleSimpleResolve(task)}>
+                                                    <CheckCircle size={14} /> Mark resolved
+                                                </button>
+                                            )}
                                             <button className="btn-proof" onClick={() => {
                                                 setResolveModal(task);
                                                 setProofFile(null);
@@ -298,11 +315,11 @@ export default function Worker({ user }) {
                         );
                     })}
 
-                    {/* Recently resolved */}
-                    {resolvedTasks.length > 0 && (
+                    {/* All-time complaints received by this worker */}
+                    {allReceivedTasks.length > 0 && (
                         <div className="resolved-section">
-                            <h4 className="section-title">Recently resolved ({resolvedTasks.length})</h4>
-                            {resolvedTasks.slice(0, 5).map(task => (
+                            <h4 className="section-title">All received complaints ({allReceivedTasks.length})</h4>
+                            {allReceivedTasks.map(task => (
                                 <div key={task.incident_id} className="resolved-row" onClick={() => navigate(`/complaint/${task.incident_id}`)}>
                                     <span className="task-id">{task.incident_id?.slice(0, 12)}…</span>
                                     <span className="task-cat">{(task.category || '').replace('_',' ')}</span>

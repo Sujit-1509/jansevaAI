@@ -36,6 +36,13 @@ function slaLabel(c) {
 
 export default function AdminComplaints() {
     const navigate = useNavigate();
+    let currentUser = {};
+    try {
+        currentUser = JSON.parse(localStorage.getItem('jansevaai_user') || '{}');
+    } catch {
+        currentUser = {};
+    }
+    const isWorkerView = currentUser?.role === 'worker';
 
     // ── Data state ────────────────────────────────────────────────────────────
     const [complaints, setComplaints]     = useState([]);
@@ -87,21 +94,34 @@ export default function AdminComplaints() {
         setLoading(true);
         setError('');
         try {
-            const [res, slaRes, workersRes] = await Promise.all([
-                getComplaints(),
+            const complaintsRes = await getComplaints();
+            setComplaints(complaintsRes.complaints || []);
+
+            const optionalCalls = await Promise.allSettled([
                 getSlaBreaches(),
-                getWorkers()
+                isWorkerView ? Promise.resolve({ success: true, workers: [] }) : getWorkers(),
             ]);
-            setComplaints(res.complaints || []);
-            setSlaBreaches(slaRes.breached || []);
-            setSlaWarnings(slaRes.warning || []);
-            setWorkersList(workersRes.workers || []);
+
+            const [slaResult, workersResult] = optionalCalls;
+            if (slaResult.status === 'fulfilled') {
+                setSlaBreaches(slaResult.value?.breached || []);
+                setSlaWarnings(slaResult.value?.warning || []);
+            } else {
+                setSlaBreaches([]);
+                setSlaWarnings([]);
+            }
+
+            if (workersResult.status === 'fulfilled') {
+                setWorkersList(workersResult.value?.workers || []);
+            } else {
+                setWorkersList([]);
+            }
         } catch (e) {
             setError('Failed to load complaints.');
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [isWorkerView]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -310,7 +330,7 @@ export default function AdminComplaints() {
                     <span className="ac-count">{filtered.length} of {complaints.length}</span>
                 </div>
                 <div className="ac-header-right">
-                    {bulkMode ? (
+                    {!isWorkerView && bulkMode ? (
                         <>
                             <span className="sel-count">{selected.size} selected</span>
                             <button className="btn-ghost" onClick={selectAll}>Select all</button>
@@ -339,9 +359,11 @@ export default function AdminComplaints() {
                         </>
                     ) : (
                         <>
-                            <button className="btn-ghost" onClick={() => setBulkMode(true)}>
-                                <Users size={14} /> Bulk select
-                            </button>
+                            {!isWorkerView && (
+                                <button className="btn-ghost" onClick={() => setBulkMode(true)}>
+                                    <Users size={14} /> Bulk select
+                                </button>
+                            )}
                             <button className="btn-ghost" onClick={exportCSV} title="Export filtered complaints as CSV">
                                 <Download size={14} /> Export CSV
                             </button>
@@ -395,7 +417,7 @@ export default function AdminComplaints() {
                     <table className="ac-table">
                         <thead>
                             <tr>
-                                {bulkMode && <th className="col-check"><input type="checkbox" onChange={e => e.target.checked ? selectAll() : clearSel()} checked={selected.size === filtered.length && filtered.length > 0} /></th>}
+                                {!isWorkerView && bulkMode && <th className="col-check"><input type="checkbox" onChange={e => e.target.checked ? selectAll() : clearSel()} checked={selected.size === filtered.length && filtered.length > 0} /></th>}
                                 <th>ID</th>
                                 <th>Category</th>
                                 <th>Severity</th>
@@ -403,12 +425,12 @@ export default function AdminComplaints() {
                                 <th>Status</th>
                                 <th>Assigned to</th>
                                 <th>SLA</th>
-                                <th>Actions</th>
+                                {!isWorkerView && <th>Actions</th>}
                             </tr>
                         </thead>
                         <tbody>
                             {filtered.length === 0 && (
-                                <tr><td colSpan={bulkMode ? 9 : 8} className="ac-empty">No complaints found</td></tr>
+                                <tr><td colSpan={!isWorkerView && bulkMode ? 9 : isWorkerView ? 7 : 8} className="ac-empty">No complaints found</td></tr>
                             )}
                             {filtered.map(c => {
                                 const sla = slaLabel(c);
@@ -419,7 +441,7 @@ export default function AdminComplaints() {
                                         onClick={() => bulkMode ? toggleSelect(c.incident_id) : navigate(`/complaint/${c.incident_id}`)}
                                         style={{ cursor: 'pointer' }}
                                     >
-                                        {bulkMode && (
+                                        {!isWorkerView && bulkMode && (
                                             <td className="col-check" onClick={e => { e.stopPropagation(); toggleSelect(c.incident_id); }}>
                                                 <input type="checkbox" checked={selected.has(c.incident_id)} onChange={() => {}} />
                                             </td>
@@ -436,13 +458,17 @@ export default function AdminComplaints() {
                                             </div>
                                         </td>
                                         <td onClick={e => e.stopPropagation()}>
-                                            <select
-                                                className="status-select"
-                                                value={c.status}
-                                                onChange={e => handleStatusChange(c.incident_id, e.target.value)}
-                                            >
-                                                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-                                            </select>
+                                            {isWorkerView ? (
+                                                <span className={statusBadge(c.status)}>{(c.status || '').replace('_', ' ')}</span>
+                                            ) : (
+                                                <select
+                                                    className="status-select"
+                                                    value={c.status}
+                                                    onChange={e => handleStatusChange(c.incident_id, e.target.value)}
+                                                >
+                                                    {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                                                </select>
+                                            )}
                                         </td>
                                         <td>
                                             {c.assigned_to_name || c.assigned_to
@@ -456,14 +482,16 @@ export default function AdminComplaints() {
                                                 : <span className="sla-ok">—</span>
                                             }
                                         </td>
-                                        <td onClick={e => e.stopPropagation()}>
-                                            <button
-                                                className="btn-assign"
-                                                onClick={() => { setAssignModal(c); setAssignWorker(c.assigned_to || ''); }}
-                                            >
-                                                {c.assigned_to ? 'Reassign' : 'Assign'}
-                                            </button>
-                                        </td>
+                                        {!isWorkerView && (
+                                            <td onClick={e => e.stopPropagation()}>
+                                                <button
+                                                    className="btn-assign"
+                                                    onClick={() => { setAssignModal(c); setAssignWorker(c.assigned_to || ''); }}
+                                                >
+                                                    {c.assigned_to ? 'Reassign' : 'Assign'}
+                                                </button>
+                                            </td>
+                                        )}
                                     </tr>
                                 );
                             })}
@@ -473,7 +501,7 @@ export default function AdminComplaints() {
             )}
 
             {/* ── Assign modal ──────────────────────────────────────────────── */}
-            {assignModal && (
+            {!isWorkerView && assignModal && (
                 <div className="modal-backdrop" onClick={() => setAssignModal(null)}>
                     <div className="modal-box" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
@@ -514,7 +542,7 @@ export default function AdminComplaints() {
             )}
 
             {/* ── Bulk assign modal ─────────────────────────────────────────── */}
-            {bulkAssignOpen && (
+            {!isWorkerView && bulkAssignOpen && (
                 <div className="modal-backdrop" onClick={() => setBulkAssignOpen(false)}>
                     <div className="modal-box" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">

@@ -38,6 +38,15 @@ export async function apiRequest(endpoint, options = {}) {
         headers,
     });
 
+    // Handle 401 Unauthorized - redirect to login
+    if (response.status === 401) {
+        localStorage.removeItem('jansevaai_token');
+        localStorage.removeItem('jansevaai_user');
+        window.location.hash = '#/';
+        window.location.reload();
+        return Promise.reject(new Error('Unauthorized - redirecting to login'));
+    }
+
     if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
         const error = new Error(errorBody.message || `API Error: ${response.status}`);
