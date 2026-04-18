@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, ThumbsUp, Share2, Clock, User, CheckCircle, Camera, Trash2, X, AlertCircle } from 'lucide-react';
-import { getComplaintById, updateComplaintStatus, upvoteComplaint, deleteComplaint } from '../../services/api';
+import { ArrowLeft, MapPin, ThumbsUp, Share2, Clock, User, CheckCircle, Camera, Trash2, X, AlertCircle, MessageSquare, Send, Loader2, SmilePlus, Frown, Meh } from 'lucide-react';
+import { getComplaintById, updateComplaintStatus, upvoteComplaint, deleteComplaint, submitFeedback } from '../../services/api';
 import { StatusBadge, SeverityBadge, CategoryTag, PriorityBar, Loader, TimeAgo } from '../../components/Shared/Shared';
 import './ComplaintDetail.css';
 
@@ -76,6 +76,11 @@ const ComplaintDetail = () => {
     const [upvotes,        setUpvotes]        = useState(0);
     const [hasUpvoted,     setHasUpvoted]     = useState(false);
     const [toast,          setToast]          = useState(null);
+
+    // Feedback state
+    const [feedbackText,    setFeedbackText]    = useState('');
+    const [feedbackLoading, setFeedbackLoading] = useState(false);
+    const [feedbackSent,    setFeedbackSent]    = useState(false);
 
     const user = JSON.parse(localStorage.getItem('jansevaai_user') || '{}');
     const canUpdateStatus = user.role === 'admin' || user.role === 'worker';
@@ -176,6 +181,31 @@ const ComplaintDetail = () => {
             showToast(error.message || 'Error updating status');
         } finally {
             setUpdatingStatus(false);
+        }
+    };
+
+    const handleFeedbackSubmit = async () => {
+        if (!feedbackText.trim()) return;
+        setFeedbackLoading(true);
+        try {
+            const res = await submitFeedback(c.incident_id || c.id, feedbackText.trim());
+            if (res.success) {
+                setComplaint(prev => ({
+                    ...prev,
+                    feedback_text: feedbackText.trim(),
+                    sentiment: res.sentiment,
+                    sentiment_score: res.score,
+                }));
+                setFeedbackSent(true);
+                showToast('Feedback submitted — thank you!', 'success');
+            } else {
+                showToast(res.error || 'Failed to submit feedback');
+            }
+        } catch (err) {
+            console.error('Feedback submit failed:', err);
+            showToast(err.message || 'Error submitting feedback');
+        } finally {
+            setFeedbackLoading(false);
         }
     };
 
@@ -361,6 +391,63 @@ const ComplaintDetail = () => {
                                 <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>No history yet.</p>
                             )}
                         </div>
+
+                        {/* ── Citizen Feedback Section ───────────────────── */}
+                        {['resolved', 'closed'].includes(c.status) && (
+                            <div className="card" style={{ marginTop: 'var(--space-md)' }}>
+                                <h3 className="sidebar-title"><MessageSquare size={16} /> Citizen Feedback</h3>
+
+                                {/* Already submitted feedback — show read-only */}
+                                {(c.feedback_text || feedbackSent) ? (
+                                    <div className="feedback-result">
+                                        <div className="feedback-sentiment-row">
+                                            <div className="feedback-emoji">
+                                                {c.sentiment === 'positive' && <SmilePlus size={28} color="var(--success)" />}
+                                                {c.sentiment === 'negative' && <Frown size={28} color="var(--danger)" />}
+                                                {(!c.sentiment || c.sentiment === 'neutral') && <Meh size={28} color="var(--warning-light)" />}
+                                            </div>
+                                            <div>
+                                                <span className={`feedback-sentiment-label sentiment-${c.sentiment || 'neutral'}`}>
+                                                    {(c.sentiment || 'neutral').charAt(0).toUpperCase() + (c.sentiment || 'neutral').slice(1)}
+                                                </span>
+                                                {c.sentiment_score != null && (
+                                                    <span className="feedback-score">Score: {Number(c.sentiment_score).toFixed(2)}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <p className="feedback-text-display">"{c.feedback_text || feedbackText}"</p>
+                                    </div>
+                                ) : isOwner ? (
+                                    /* Owner can submit feedback */
+                                    <div className="feedback-form">
+                                        <p className="text-sm text-muted" style={{ marginBottom: 8 }}>How was your experience? Your feedback helps improve civic services.</p>
+                                        <textarea
+                                            className="feedback-textarea"
+                                            placeholder="Share your experience — was the issue fixed properly?"
+                                            value={feedbackText}
+                                            onChange={(e) => setFeedbackText(e.target.value)}
+                                            maxLength={2000}
+                                            rows={3}
+                                            disabled={feedbackLoading}
+                                        />
+                                        <div className="feedback-actions">
+                                            <span className="text-xs text-muted">{feedbackText.length}/2000</span>
+                                            <button
+                                                className="btn btn-primary"
+                                                onClick={handleFeedbackSubmit}
+                                                disabled={feedbackLoading || !feedbackText.trim()}
+                                                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                                            >
+                                                {feedbackLoading ? <Loader2 size={14} className="spin-icon" /> : <Send size={14} />}
+                                                {feedbackLoading ? 'Analyzing...' : 'Submit Feedback'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted">No feedback submitted yet.</p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* ── Sidebar ──────────────────────────────────────────── */}

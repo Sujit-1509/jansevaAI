@@ -342,3 +342,86 @@
   .detail-page { padding: 16px 0 32px; }
   .proof-photos-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Citizen Feedback Section ──────────────────────────────────── */
+.feedback-form {
+  margin-top: var(--space-sm);
+}
+
+.feedback-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-family: var(--font);
+  color: var(--text-primary);
+  background: var(--bg-card);
+  resize: vertical;
+  min-height: 72px;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.feedback-textarea:focus {
+  border-color: var(--primary-lighter);
+  box-shadow: var(--shadow-focus);
+  outline: none;
+}
+.feedback-textarea::placeholder { color: var(--text-muted); }
+
+.feedback-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.feedback-result {
+  margin-top: var(--space-sm);
+}
+
+.feedback-sentiment-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.feedback-emoji {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--gray-50);
+  border: 1.5px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+.feedback-sentiment-label {
+  font-size: 15px;
+  font-weight: 800;
+  display: block;
+}
+.feedback-sentiment-label.sentiment-positive { color: var(--success); }
+.feedback-sentiment-label.sentiment-negative { color: var(--danger); }
+.feedback-sentiment-label.sentiment-neutral { color: var(--warning-light); }
+
+.feedback-score {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin-top: 2px;
+}
+
+.feedback-text-display {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: 10px 14px;
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--border-medium);
+  line-height: 1.6;
+}

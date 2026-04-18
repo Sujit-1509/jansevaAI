@@ -7,9 +7,11 @@ function Deploy-Lambda($folder, $funcName) {
     $zipFile = "$funcName.zip"
     if (Test-Path $zipFile) { Remove-Item $zipFile }
     
-    # For process_image, we need multiple files
-    if ($folder.EndsWith("process_image")) {
-        Compress-Archive -Path *.py -DestinationPath $zipFile -Force
+    # For multi-file Lambdas (process_image, analyze_feedback), zip all .py files + data dirs
+    if ($folder.EndsWith("process_image") -or $folder.EndsWith("analyze_feedback")) {
+        $items = @(Get-ChildItem -Path "*.py")
+        if (Test-Path "nltk_data") { $items += Get-Item "nltk_data" }
+        Compress-Archive -Path $items -DestinationPath $zipFile -Force
     } else {
         Compress-Archive -Path lambda_function.py -DestinationPath $zipFile -Force
     }
@@ -36,5 +38,6 @@ Deploy-Lambda "backend/get_complaint" "civicai-get-complaint"
 Deploy-Lambda "backend/get_nearby_complaints" "civicai-get-nearby-complaints"
 Deploy-Lambda "backend/assign_complaint" "civicai-assign-complaint"
 Deploy-Lambda "backend/verify_resolution" "civicai-verify-resolution"
+Deploy-Lambda "backend/analyze_feedback" "civicai-analyze-feedback"
 
 Write-Host "All specified Lambdas deployed successfully!"

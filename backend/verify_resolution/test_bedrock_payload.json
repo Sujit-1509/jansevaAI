@@ -1,0 +1,16 @@
+{
+  "inferenceConfig": {
+    "maxTokens": 10,
+    "temperature": 0.1
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "text": "Hello. Are you functioning? Answer with yes or no."
+        }
+      ]
+    }
+  ]
+}

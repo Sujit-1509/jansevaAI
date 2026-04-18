@@ -404,3 +404,18 @@ function mockAnalysisResult() {
         s3Keys: [],
     };
 }
+
+/**
+ * Submit citizen feedback for a resolved complaint.
+ * The backend runs VADER sentiment analysis and stores the result.
+ *
+ * @param {string} complaintId — incident_id of the complaint
+ * @param {string} feedbackText — citizen's feedback text
+ * @returns {Promise<object>} — { success, sentiment, score }
+ */
+export async function submitFeedback(complaintId, feedbackText) {
+    const res = await api.post(`/complaints/${complaintId}/feedback`, {
+        feedback: feedbackText,
+    });
+    return res;
+}

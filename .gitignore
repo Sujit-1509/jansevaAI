@@ -44,11 +44,22 @@ __pycache__/
 .Python
 *.egg-info/
 
-# Misc
+# Misc & Internal Tools
 .gemini/
 .agent/
 .gsd/
 adapters/
+PROJECT_RULES.md
+GSD-STYLE.md
+
+# Reports & Binary artifacts
+JanSevaAI_Project_Report.docx
+*.docx
+
+# Temporary utility & test scripts
+s3_policy.json
+test_*.py
+generate_report.py
 
 # Temporary UI migration files
 civicai-ui-redesign-extracted/

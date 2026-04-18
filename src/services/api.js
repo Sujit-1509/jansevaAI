@@ -15,6 +15,7 @@ export {
     getUploadUrl,
     analyzeImages,
     analyzeImage,
+    submitFeedback,
 } from './complaintsApi';
 
 export {
