@@ -112,9 +112,11 @@ const ComplaintDetail = () => {
 
     const uPhone = String(user.phone || user.userPhone || '').trim();
     const cPhone = String(c.user_phone || c.userPhone || '').trim();
-    const isOwner = (user.role === 'admin') || 
-                    (uPhone && cPhone && (cPhone.includes(uPhone) || uPhone.includes(cPhone))) ||
-                    (user.name && c.user_name && user.name === c.user_name);
+    const isCitizenOwner = (uPhone && cPhone && (cPhone.includes(uPhone) || uPhone.includes(cPhone))) ||
+                           (user.name && c.user_name && user.name === c.user_name);
+    const isOwner = user.role === 'admin' || isCitizenOwner;
+    // Only the citizen who filed the complaint can write feedback (not admin/worker)
+    const isFeedbackOwner = isCitizenOwner && user.role !== 'admin' && user.role !== 'worker';
 
     // Build timeline: inject the initial "submitted" entry if status_history is empty
     const rawHistory    = Array.isArray(c.status_history) ? c.status_history : [];
@@ -417,7 +419,7 @@ const ComplaintDetail = () => {
                                         </div>
                                         <p className="feedback-text-display">"{c.feedback_text || feedbackText}"</p>
                                     </div>
-                                ) : isOwner ? (
+                                ) : isFeedbackOwner ? (
                                     /* Owner can submit feedback */
                                     <div className="feedback-form">
                                         <p className="text-sm text-muted" style={{ marginBottom: 8 }}>How was your experience? Your feedback helps improve civic services.</p>
